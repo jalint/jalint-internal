@@ -10,7 +10,22 @@ class RoleController extends Controller
     // List Role
     public function index()
     {
-        $roles = Role::with('permissions')->get();
+        $perPage = (int) request()->input('per_page', 15);
+        $perPage = min(max($perPage, 1), 100); // guardrail: 1–100
+
+        $search = request()->input('search');
+
+        $query = Role::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+                // tambahkan kolom lain bila perlu
+                // ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        $roles = $query->with('permissions')->simplePaginate($perPage);
 
         return response()->json($roles);
     }
@@ -23,16 +38,13 @@ class RoleController extends Controller
             'permissions' => 'array',
         ]);
 
-        $role = Role::create(['name' => $data['name']]);
+        $role = Role::create(['name' => $data['name'], 'guard_name' => 'api']);
 
         if (!empty($data['permissions'])) {
             $role->syncPermissions($data['permissions']);
         }
 
-        return response()->json([
-            'message' => 'Role created',
-            'role' => $role->load('permissions'),
-        ], 201);
+        return response()->json($role->load('permissions'), 201);
     }
 
     // Detail Role
@@ -59,18 +71,14 @@ class RoleController extends Controller
             $role->syncPermissions($data['permissions']);
         }
 
-        return response()->json([
-            'message' => 'Role updated',
-            'role' => $role->load('permissions'),
-        ]);
+        return response()->json($role->load('permissions'));
     }
 
     // Delete Role
-    public function destroy($id)
+    public function destroy(Role $role)
     {
-        $role = Role::findOrFail($id);
         $role->delete();
 
-        return response()->json(['message' => 'Role deleted']);
+        return response()->noContent();
     }
 }

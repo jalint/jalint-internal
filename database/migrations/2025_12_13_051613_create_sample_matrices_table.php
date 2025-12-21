@@ -10,9 +10,15 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('customer_types', function (Blueprint $table) {
+        Schema::create('sample_matrices', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->string('code')->unique();
+            $table->string('name');
+            $table->foreignId('sample_type_id')
+             ->constrained('sample_types')
+             ->restrictOnDelete();
+            $table->text('description');
+            $table->tinyInteger('environment');
             $table->timestamps();
         });
     }
@@ -22,6 +28,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('customer_types');
+        Schema::dropIfExists('sample_matricess');
     }
 };

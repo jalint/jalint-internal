@@ -1,9 +1,13 @@
 <?php
 
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Permission\Exceptions\UnauthorizedException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'role' => Spatie\Permission\Middleware\RoleMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (AuthenticationException $e) {
@@ -23,5 +30,55 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect('/');
+        });
+
+        $exceptions->renderable(function (AuthenticationException $e) {
+            $req = request();
+
+            if ($req->expectsJson() || $req->is('api/*')) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            return redirect('/');
+        });
+
+        $exceptions->renderable(function (UnauthorizedException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'You do not have permission to access this resource.',
+                    'error' => 'FORBIDDEN',
+                ], 403);
+            }
+        });
+
+        // Handle ModelNotFoundException
+        $exceptions->render(function (NotFoundHttpException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                // Extract model name
+
+                // Extract ID dari message
+                preg_match('/\[.*\]\s+(.+)/', $e->getMessage(), $matches);
+                $id = $matches[1] ?? 'unknown';
+
+                return response()->json([
+                    'message' => 'Not Found',
+                ], 404);
+            }
+        });
+
+        $exceptions->render(function (QueryException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                // MySQL foreign key constraint violation
+                if (
+                    $e->getCode() === '23000'
+                    && str_contains($e->getMessage(), 'Cannot delete or update a parent row')
+                ) {
+                    return response()->json([
+                        'message' => 'Data tidak dapat dihapus karena masih digunakan oleh data lain.',
+                    ], 409); // 409 Conflict
+                }
+            }
         });
     })->create();

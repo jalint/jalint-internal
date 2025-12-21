@@ -12,19 +12,21 @@ return new class extends Migration {
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
-
             $table->string('name');
-
-            // BUKAN foreign() langsung, tapi foreignId()
             $table->foreignId('customer_type_id')
                   ->constrained('customer_types')
                   ->noActionOnDelete();
-
+            $table->foreignId('customer_account_id')
+                  ->constrained('customer_accounts')
+                  ->cascadeOnDelete();
             $table->boolean('status')->default(true);
-
-            $table->string('address');
-            $table->string('postal_code')->nullable();
-
+            $table->string('email')->unique();
+            $table->string('npwp')->unique();
+            $table->string('website');
+            $table->text('address');
+            $table->string('city');
+            $table->string('postal_code');
+            $table->string('province');
             $table->timestamps();
         });
     }

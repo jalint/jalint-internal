@@ -13,6 +13,9 @@ return new class extends Migration {
         Schema::create('customer_accounts', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('customer_id')
+                  ->constrained('customers')
+                  ->cascadeOnDelete();
             $table->string('email')->unique();
             $table->string('password');
             $table->timestamps();
