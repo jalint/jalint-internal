@@ -23,6 +23,7 @@ class UpdateTestParameterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'code' => ['required',  Rule::unique('test_parameters', 'code')->ignore($this->route('test_parameter'))],
             'name' => ['required',  Rule::unique('test_parameters', 'name')->ignore($this->route('test_parameter'))],
             'unit' => 'required|string',
             'test_method_id' => 'required|exists:test_methods,id',

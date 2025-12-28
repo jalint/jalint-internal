@@ -18,12 +18,8 @@ return new class extends Migration {
             $table->string('position')->nullable();
             $table->string('email')->nullable()->index();
             $table->string('phone')->nullable()->index();
-
-            $table->string('type')->nullable();     // billing, technical, primary, etc.
-            $table->boolean('is_primary')->default(false);
-
-            $table->text('notes')->nullable();
-
+            $table->string('npwp')->nullable();
+            $table->string('position')->nullable();     // billing, technical, primary, etc.
             $table->timestamps();
         });
     }

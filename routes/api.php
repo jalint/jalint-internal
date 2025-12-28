@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationController;
+use App\Http\Controllers\CustomerContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\OfferController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RegulationController;
 use App\Http\Controllers\RoleController;
@@ -29,6 +31,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('roles', RoleController::class);
     Route::patch('/customers/{customer}/reset-password', [CustomerController::class, 'resetPassword']);
     Route::apiResource('customers/types', CustomerTypeController::class);
+    Route::apiResource('customers/contacts', CustomerContactController::class);
 
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('sample-types', SampleTypeController::class);
@@ -44,4 +47,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
     Route::apiResource('users', UserController::class);
+
+    Route::post('offers/{offer}/review', [OfferController::class, 'review']);
+    Route::apiResource('offers', OfferController::class);
 });

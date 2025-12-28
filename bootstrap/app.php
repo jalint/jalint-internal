@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Spatie\Permission\Exceptions\UnauthorizedException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -32,16 +33,31 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect('/');
         });
 
-        $exceptions->renderable(function (AuthenticationException $e) {
-            $req = request();
+        $exceptions->render(function (HttpExceptionInterface $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                // Tentukan level log
+                $status = $e->getStatusCode();
 
-            if ($req->expectsJson() || $req->is('api/*')) {
+                if ($status >= 500) {
+                    Log::error('HTTP Exception', [
+                        'status' => $status,
+                        'message' => $e->getMessage(),
+                        'url' => $request->fullUrl(),
+                        'method' => $request->method(),
+                        'ip' => $request->ip(),
+                    ]);
+                } else {
+                    Log::info('HTTP Exception', [
+                        'status' => $status,
+                        'message' => $e->getMessage(),
+                        'url' => $request->fullUrl(),
+                    ]);
+                }
+
                 return response()->json([
-                    'message' => 'Unauthenticated.',
-                ], 401);
+                    'message' => $e->getMessage() ?: 'Bad Request',
+                ], $e->getStatusCode());
             }
-
-            return redirect('/');
         });
 
         $exceptions->renderable(function (UnauthorizedException $e, $request) {
@@ -71,6 +87,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (QueryException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 // MySQL foreign key constraint violation
+
+                Log::error('Database error', [
+                    'code' => $e->getCode(),
+                    'sql' => $e->getSql(),
+                    'bindings' => $e->getBindings(),
+                    'url' => $request->fullUrl(),
+                ]);
+
                 if (
                     $e->getCode() === '23000'
                     && str_contains($e->getMessage(), 'Cannot delete or update a parent row')

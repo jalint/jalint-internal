@@ -12,6 +12,7 @@ return new class extends Migration {
 
             // Core identity
             $table->string('name')->unique();
+            $table->string('code')->unique();
             $table->string('unit')->nullable(); // e.g. mg/L, %, °C
 
             // Pricing
