@@ -17,4 +17,9 @@ class OfferDetail extends Model
     {
         return $this->belongsTo(TestPackage::class);
     }
+
+    public function subkon()
+    {
+        return $this->hasOne(Subkon::class);
+    }
 }

@@ -27,7 +27,7 @@ class UpdateCustomerContactRequest extends FormRequest
             'email' => 'nullable',
             'phone' => 'nullable',
             'type' => 'required',
-            'notes' => 'nullable',
+            'npwp' => 'nullable',
         ];
     }
 }

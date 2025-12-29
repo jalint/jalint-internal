@@ -12,6 +12,7 @@ use App\Http\Controllers\RegulationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SampleMatrixController;
 use App\Http\Controllers\SampleTypeController;
+use App\Http\Controllers\SubkonController;
 use App\Http\Controllers\TestMethodController;
 use App\Http\Controllers\TestPackageController;
 use App\Http\Controllers\TestParameterController;
@@ -43,6 +44,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('positions', PositionController::class);
     Route::apiResource('certifications', CertificationController::class);
     Route::apiResource('employees', EmployeeController::class);
+    Route::apiResource('subkons', SubkonController::class);
 
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 

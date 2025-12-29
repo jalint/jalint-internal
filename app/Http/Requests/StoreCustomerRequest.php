@@ -32,6 +32,12 @@ class StoreCustomerRequest extends FormRequest
             'postal_code' => 'required',
             'status' => 'required',
             'address' => 'required',
+
+            'pic_name' => 'required|string',
+            'pic_email' => 'nullable',
+            'pic_phone' => 'nullable',
+            'pic_position' => 'required',
+            'pic_npwp' => 'nullable',
         ];
     }
 }

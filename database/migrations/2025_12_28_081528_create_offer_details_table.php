@@ -14,11 +14,10 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('offer_id')->constrained()->restrictOnDelete();
             $table->foreignId('test_parameter_id')->nullable()->constrained()->restrictOnDelete();
+            $table->foreignId('subkon_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('test_package_id')->nullable()->constrained()->restrictOnDelete();
             $table->decimal('price', 12, 2)->default(0);
             $table->integer('qty');
-            $table->string('sample_tested_by')->nullable();
-
             $table->timestamps();
         });
     }

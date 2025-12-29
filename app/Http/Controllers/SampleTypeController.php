@@ -6,7 +6,6 @@ use App\Http\Requests\StoreSampleTypeRequest;
 use App\Http\Requests\UpdateSampleTypeRequest;
 use App\Models\SampleType;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 
 class SampleTypeController extends Controller
 {
@@ -30,7 +29,7 @@ class SampleTypeController extends Controller
             });
         }
 
-        $sampleType = $query->simplePaginate($perPage);
+        $sampleType = $query->orderByDesc('created_at')->simplePaginate($perPage);
 
         return response()->json($sampleType);
     }
@@ -60,7 +59,7 @@ class SampleTypeController extends Controller
     {
         $sampleType->update($request->validated());
 
-        return response()->json($sampleType->fresh(), Response::HTTP_OK);
+        return response()->json($sampleType->fresh());
     }
 
     /**

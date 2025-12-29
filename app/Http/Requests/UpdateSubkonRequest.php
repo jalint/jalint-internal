@@ -11,7 +11,7 @@ class UpdateSubkonRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,12 @@ class UpdateSubkonRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name' => 'required',
+            'city' => 'nullable',
+            'province' => 'nullable',
+            'postal_code' => 'nullable',
+            'is_active' => 'required',
+            'address' => 'nullable',
         ];
     }
 }

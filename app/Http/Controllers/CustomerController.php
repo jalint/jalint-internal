@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
+use App\Models\CustomerContact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -28,7 +29,7 @@ class CustomerController extends Controller
             });
         }
 
-        $customers = $query->with('customerType:id,name')->simplePaginate($perPage);
+        $customers = $query->with('customerType:id,name', 'customerContact')->simplePaginate($perPage);
 
         return response()->json($customers);
     }
@@ -51,6 +52,15 @@ class CustomerController extends Controller
 
             $account->assignRole('customer');
 
+            CustomerContact::create([
+                'customer_id' => $customer->id,
+                'name' => $request->pic_name,
+                'position' => $request->pic_position,
+                'email' => $request->pic_email,
+                'phone' => $request->pic_phone,
+                'npwp' => $request->pic_npwp,
+            ]);
+
             return $customer;
         });
 
@@ -59,7 +69,7 @@ class CustomerController extends Controller
 
     public function show(Customer $customer): JsonResponse
     {
-        return response()->json($customer->load('customerType:id,name'));
+        return response()->json($customer->load(['customerType:id,name', 'customerContact']));
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer): JsonResponse
@@ -72,6 +82,14 @@ class CustomerController extends Controller
                 'email' => $customer->email,
             ]);
         }
+
+        CustomerContact::where('customer_id', $customer->id)->update([
+            'name' => $request->pic_name,
+            'position' => $request->pic_position,
+            'email' => $request->pic_email,
+            'phone' => $request->pic_phone,
+            'npwp' => $request->pic_npwp,
+        ]);
 
         return response()->json($customer->fresh());
     }

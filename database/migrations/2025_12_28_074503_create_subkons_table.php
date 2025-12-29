@@ -13,6 +13,11 @@ return new class extends Migration {
         Schema::create('subkons', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('city');
+            $table->string('postal_code');
+            $table->string('province');
+            $table->boolean('is_active');
+            $table->text('address');
             $table->timestamps();
         });
     }
