@@ -27,7 +27,7 @@ class OfferController extends Controller
             }, 'createdBy:id,name',
         ])
          ->orderByDesc('created_at')
-         ->simplePaginate();
+         ->paginate();
 
         return response()->json($offers);
     }
@@ -71,8 +71,8 @@ class OfferController extends Controller
                         'test_parameter_id' => $detail['test_parameter_id'],
                         'price' => $detail['price'] * $detail['qty'],
                         'qty' => $detail['qty'],
-                        'sample_tested_by' => $detail['sample_tested_by'] ?? null,
                         'test_package_id' => $detail['test_package_id'] ?? null,
+                        'subkon_id' => 1, // Default JLI
                     ]);
                 }
 
@@ -115,8 +115,9 @@ class OfferController extends Controller
             },
             'reviews.reviewStep',
 
-            // detail penawaran
-            // 'details.testParameter.testPackages',
+            // detail penawaran (WAJIB eager load)
+            'details.subkon',
+            'details.testParameter.testPackages',
         ])->findOrFail($id);
 
         $currentReview = $offer->currentReview;
@@ -159,22 +160,28 @@ class OfferController extends Controller
                             'method' => $detail->testParameter->method ?? null,
                             'price' => $detail->price,
                             'qty' => $detail->qty,
-                            'sample_tested_by' => $detail->sample_tested_by,
+
+                            // RELASI BELONGS TO → AKSES LANGSUNG
+                            'subkon' => $detail->subkon ? [
+                                'id' => $detail->subkon->id,
+                                'name' => $detail->subkon->name,
+                            ] : null,
                         ];
                     })->values(),
                 ];
             })
             ->values();
 
+        // sembunyikan details mentah
         $offer->makeHidden(['details']);
 
         return response()->json([
+            'can_review' => $canReview,
             'offer' => $offer,
             'current_step' => $currentReview ? [
                 'code' => $currentReview->reviewStep->code,
                 'name' => $currentReview->reviewStep->name,
             ] : null,
-            'can_review' => $canReview,
             'details' => $groupedParameters,
         ]);
     }
@@ -195,14 +202,25 @@ class OfferController extends Controller
 
     public function review(Request $request, $id)
     {
-        $request->validate([
+        $rules = [
             'decision' => 'required|in:approved,rejected',
             'note' => 'nullable|string',
+        ];
 
-            'details' => 'required_if:decision,approved|array',
-            'details.*.id' => 'required|integer|exists:offer_details,id',
-            'details.*.sample_tested_by' => 'required|string',
-        ]);
+        // HANYA admin KUPTDK yang wajib kirim details
+        if (auth()->user()->hasRole('admin_kuptdk')) {
+            $rules['details'] = 'required|array';
+            $rules['details.*.id'] = 'required|integer|exists:offer_details,id';
+            $rules['details.*.test_parameter_id'] = 'required|exists:test_parameters,id';
+            $rules['details.*.subkon_id'] = 'required|exists:subkons,id';
+            $rules['details.*.price'] = 'required|min:0';
+            $rules['details.*.sometimes'] = 'required|boolean';
+        } else {
+            // role lain: optional
+            $rules['details'] = 'nullable|array';
+        }
+
+        $request->validate($rules);
 
         $user = auth()->user();
 
@@ -247,11 +265,20 @@ class OfferController extends Controller
 
             if ($currentReview->reviewStep->code == 'admin_kuptdk') {
                 foreach ($request->details as $detail) {
-                    $offer->details()
-                    ->where('id', $detail->id)
+                    if ($detail['is_delete']) {
+                        $offer->details()
+                            ->where('id', $detail['id'])
+                            ->delete();
+                        continue;
+                    } else {
+                        $offer->details()
+                    ->where('id', $detail['id'])
                     ->update([
-                        'sample_tested_by' => $detail['sample_tested_by'],
+                        'test_parameter_id' => $detail['test_parameter_id'],
+                        'subkon_id' => $detail['subkon_id'],
+                        'price' => $detail['price'],
                     ]);
+                    }
                 }
             }
 

@@ -20,6 +20,6 @@ class OfferDetail extends Model
 
     public function subkon()
     {
-        return $this->hasOne(Subkon::class);
+        return $this->belongsTo(Subkon::class);
     }
 }

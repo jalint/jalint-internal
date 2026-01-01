@@ -16,7 +16,7 @@ class TestPackageController extends Controller
 
         $query = TestPackage::query()
             ->with([
-                'testParameters:id,name',
+                'testParameters:id,name,price',
                 'sampleMatrix:id,name',
                 'regulation:id,name',
             ]);
@@ -27,7 +27,7 @@ class TestPackageController extends Controller
 
         $packages = $query
             ->orderBy('created_at', 'desc')
-            ->simplePaginate($perPage);
+            ->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($packages);
     }

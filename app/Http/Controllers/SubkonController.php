@@ -29,7 +29,7 @@ class SubkonController extends Controller
             });
         }
 
-        $subkons = $query->orderByDesc('created_at')->simplePaginate($perPage);
+        $subkons = $query->orderByDesc('created_at')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($subkons);
     }

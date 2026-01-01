@@ -27,7 +27,7 @@ class RegulationController extends Controller
             });
         }
 
-        $regulations = $query->simplePaginate($perPage);
+        $regulations = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($regulations);
     }

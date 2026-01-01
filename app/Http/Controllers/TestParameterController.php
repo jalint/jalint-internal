@@ -28,7 +28,7 @@ class TestParameterController extends Controller
             });
         }
 
-        $testParameters = $query->with('testMethod:id,name')->simplePaginate($perPage);
+        $testParameters = $query->with('testMethod:id,name')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($testParameters);
     }

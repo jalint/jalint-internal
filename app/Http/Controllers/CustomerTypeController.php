@@ -26,7 +26,7 @@ class CustomerTypeController extends Controller
             });
         }
 
-        $customerTypes = $query->simplePaginate($perPage);
+        $customerTypes = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($customerTypes);
     }

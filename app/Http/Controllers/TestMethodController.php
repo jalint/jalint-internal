@@ -27,7 +27,7 @@ class TestMethodController extends Controller
             });
         }
 
-        $testMethods = $query->simplePaginate($perPage);
+        $testMethods = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($testMethods);
     }

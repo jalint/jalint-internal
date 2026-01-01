@@ -26,7 +26,7 @@ return new class extends Migration {
             $table->foreignId('template_id')->nullable()->constrained()->nullOnDelete();
 
             $table->text('additional_description')->nullable();
-
+            $table->varchar('testing_activities');
             $table->decimal('discount_amount', 15, 2)->default(0);
             $table->decimal('vat_percent', 5, 2)->default(0);
             $table->decimal('withholding_tax_percent', 5, 2)->default(0);

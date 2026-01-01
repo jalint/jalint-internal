@@ -26,7 +26,7 @@ class SampleMatrixController extends Controller
             });
         }
 
-        $sampleMatrix = $query->with('sampleType:id,name')->simplePaginate($perPage);
+        $sampleMatrix = $query->with('sampleType:id,name')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($sampleMatrix);
     }

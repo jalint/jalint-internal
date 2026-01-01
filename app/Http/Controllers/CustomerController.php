@@ -29,7 +29,7 @@ class CustomerController extends Controller
             });
         }
 
-        $customers = $query->with('customerType:id,name', 'customerContact')->simplePaginate($perPage);
+        $customers = $query->with('customerType:id,name', 'customerContact')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($customers);
     }

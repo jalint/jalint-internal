@@ -33,7 +33,7 @@ class EmployeeController extends Controller
             });
         }
 
-        $sampleType = $query->with('certifications:id,name')->simplePaginate($perPage);
+        $sampleType = $query->with('certifications:id,name')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($sampleType);
     }

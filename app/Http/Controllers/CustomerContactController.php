@@ -29,7 +29,7 @@ class CustomerContactController extends Controller
             });
         }
 
-        $customerContacts = $query->simplePaginate($perPage);
+        $customerContacts = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($customerContacts);
     }

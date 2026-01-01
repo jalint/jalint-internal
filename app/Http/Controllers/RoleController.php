@@ -25,7 +25,7 @@ class RoleController extends Controller
             });
         }
 
-        $roles = $query->with('permissions')->simplePaginate($perPage);
+        $roles = $query->with('permissions')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($roles);
     }

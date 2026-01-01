@@ -27,7 +27,7 @@ class PositionController extends Controller
             });
         }
 
-        $postions = $query->simplePaginate($perPage);
+        $postions = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($postions);
     }

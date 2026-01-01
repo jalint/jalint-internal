@@ -29,7 +29,7 @@ class SampleTypeController extends Controller
             });
         }
 
-        $sampleType = $query->orderByDesc('created_at')->simplePaginate($perPage);
+        $sampleType = $query->orderByDesc('created_at')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($sampleType);
     }

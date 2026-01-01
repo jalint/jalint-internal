@@ -25,7 +25,7 @@ class CertificationController extends Controller
 
         $packages = $query
             ->orderBy('created_at', 'desc')
-            ->simplePaginate($perPage);
+            ->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($packages);
     }

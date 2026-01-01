@@ -29,7 +29,7 @@ class UserController extends Controller
         }
 
         return response()->json(
-            $query->simplePaginate($perPage)
+            $query->orderBy('created_at', 'desc')->paginate($perPage)
         );
     }
 
