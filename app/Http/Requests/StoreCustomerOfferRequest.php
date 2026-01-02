@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreOfferRequest extends FormRequest
+class StoreCustomerOfferRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,16 +23,9 @@ class StoreOfferRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'customer_id' => ['required', 'exists:customers,id'],
             'offer_date' => ['required', 'date'],
             'expired_date' => ['nullable', 'date', 'after_or_equal:offer_date'],
             'request_number' => ['nullable', 'string', 'max:100'],
-            'template_id' => ['nullable', 'exists:templates,id'],
-            'additional_description' => ['nullable', 'string'],
-            'discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'withholding_tax_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'is_draft' => ['required', 'boolean'],
             'details' => ['required', 'array', 'min:1'],
             'details.*.test_parameter_id' => ['required', 'exists:test_parameters,id'],
             'details.*.test_package_id' => ['nullable', 'exists:test_packages,id'],

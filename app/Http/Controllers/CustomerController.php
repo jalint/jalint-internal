@@ -37,18 +37,13 @@ class CustomerController extends Controller
     public function store(StoreCustomerRequest $request): JsonResponse
     {
         $customer = DB::transaction(function () use ($request) {
+            $customer = Customer::create($request->validated());
+
             $account = CustomerAccount::create([
+                'customer_id' => $customer->id,
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => bcrypt('jalint2025')]);
-
-            // 2. Gabungkan user_id ke data employee
-            $customerData = array_merge(
-                $request->validated(),
-                ['customer_account_id' => $account->id]
-            );
-
-            $customer = Customer::create($customerData);
 
             $account->assignRole('customer');
 

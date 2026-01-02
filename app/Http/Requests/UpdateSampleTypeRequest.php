@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateSampleTypeRequest extends FormRequest
 {
@@ -23,7 +22,8 @@ class UpdateSampleTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required',  Rule::unique('sample_types', 'name')->ignore($this->route('sample_type'))],
+            'name' => ['required'],
+            'regulation_id' => ['required'],
         ];
     }
 }

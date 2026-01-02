@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\CustomerContactController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerOfferController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\OfferController;
@@ -15,8 +16,8 @@ use App\Http\Controllers\SampleTypeController;
 use App\Http\Controllers\SubkonController;
 use App\Http\Controllers\TestMethodController;
 use App\Http\Controllers\TestPackageController;
-use App\Http\Controllers\TestParameterController;
 // use App\Http\Controllers\UserController;
+use App\Http\Controllers\TestParameterController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,14 @@ Route::post('/users/login', [AuthController::class, 'login']);
 Route::post('/customer/login', [AuthController::class, 'loginCustomer']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
+        Route::get('customers/offers/summary', [CustomerOfferController::class, 'summary']);
+        Route::apiResource(
+            'customers/offers',
+            CustomerOfferController::class
+        );
+    });
+
     Route::apiResource('roles', RoleController::class);
     Route::patch('/customers/{customer}/reset-password', [CustomerController::class, 'resetPassword']);
     Route::apiResource('customers/types', CustomerTypeController::class);
@@ -39,6 +48,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('sample-matrices', SampleMatrixController::class);
     Route::apiResource('regulations', RegulationController::class);
     Route::apiResource('test-methods', TestMethodController::class);
+
+    Route::get('test-parameters/grouped', [TestParameterController::class, 'listGroupedTestParameters']);
     Route::apiResource('test-parameters', TestParameterController::class);
     Route::apiResource('test-packages', TestPackageController::class);
     Route::apiResource('positions', PositionController::class);

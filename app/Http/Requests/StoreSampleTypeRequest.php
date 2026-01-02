@@ -22,7 +22,8 @@ class StoreSampleTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|unique:sample_types,name',
+            'name' => ['required'],
+            'regulation_id' => ['required'],
         ];
     }
 }

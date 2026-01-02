@@ -24,4 +24,9 @@ class CustomerAccount extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 }

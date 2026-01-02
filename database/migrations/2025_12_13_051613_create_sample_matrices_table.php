@@ -18,7 +18,7 @@ return new class extends Migration {
              ->constrained('sample_types')
              ->restrictOnDelete();
             $table->text('description');
-            $table->tinyInteger('environment');
+            $table->string('environment');
             $table->timestamps();
         });
     }

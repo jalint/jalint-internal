@@ -20,4 +20,9 @@ class TestParameter extends Model
             'parameter_test_package'
         );
     }
+
+    public function sampleType()
+    {
+        return $this->belongsTo(SampleType::class);
+    }
 }

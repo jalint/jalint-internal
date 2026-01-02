@@ -40,6 +40,7 @@ class UpdateOfferRequest extends FormRequest
             'withholding_tax_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             'is_draft' => ['required', 'boolean'],
+            'testing_activities' => ['required'],
 
             'details' => ['required', 'array', 'min:1'],
             'details.*.test_parameter_id' => ['required', 'exists:test_parameters,id'],

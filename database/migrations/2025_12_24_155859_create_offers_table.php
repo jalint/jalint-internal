@@ -25,8 +25,9 @@ return new class extends Migration {
             $table->string('request_number')->nullable();
             $table->foreignId('template_id')->nullable()->constrained()->nullOnDelete();
 
+            $table->text('location');
             $table->text('additional_description')->nullable();
-            $table->string('testing_activities');
+            $table->string('testing_activities')->nullable();
             $table->decimal('discount_amount', 15, 2)->default(0);
             $table->decimal('vat_percent', 5, 2)->default(0);
             $table->decimal('withholding_tax_percent', 5, 2)->default(0);
@@ -46,7 +47,8 @@ return new class extends Migration {
             $table->decimal('total_amount', 15, 2)->default(0);      // total invoice
             $table->decimal('payable_amount', 15, 2)->default(0);    // dibayar ke vendor
 
-            $table->foreignId('created_by')->constrained('users');
+            $table->string('created_by_type'); // 'admin' | 'customer'
+            $table->unsignedBigInteger('created_by_id');
 
             $table->timestamps();
         });

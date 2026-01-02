@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTestParameterRequest;
 use App\Http\Requests\UpdateTestParameterRequest;
+use App\Models\SampleType;
 use App\Models\TestParameter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -28,7 +29,7 @@ class TestParameterController extends Controller
             });
         }
 
-        $testParameters = $query->with('testMethod:id,name')->orderBy('created_at', 'desc')->paginate($perPage);
+        $testParameters = $query->with('testMethod:id,name', 'sampleType.regulation')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($testParameters);
     }
@@ -69,5 +70,52 @@ class TestParameterController extends Controller
         $testParameter->delete();
 
         return response()->noContent();
+    }
+
+    public function listGroupedTestParameters(?string $search = null)
+    {
+        $data = SampleType::query()
+            ->whereHas('testParameters', function ($query) use ($search) {
+                if ($search) {
+                    $query->where('name', 'like', '%'.$search.'%');
+                }
+            })
+            ->with([
+                'regulation',
+                'testParameters' => function ($query) use ($search) {
+                    if ($search) {
+                        $query->where('name', 'like', '%'.$search.'%');
+                    }
+
+                    $query->orderBy('name');
+                },
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($sampleType) {
+                return [
+                    'sample_type_id' => $sampleType->id,
+                    'sample_type_name' => $sampleType->name,
+
+                    'regulation' => $sampleType->regulation ? [
+                        'id' => $sampleType->regulation->id,
+                        'name' => $sampleType->regulation->name,
+                        'code' => $sampleType->regulation->code ?? null,
+                    ] : null,
+
+                    'parameters' => $sampleType->testParameters->map(function ($param) {
+                        return [
+                            'id' => $param->id,
+                            'name' => $param->name,
+                            'code' => $param->code,
+                            'unit' => $param->unit,
+                            'price' => $param->price,
+                        ];
+                    })->values(),
+                ];
+            })
+            ->values();
+
+        return response()->json($data);
     }
 }

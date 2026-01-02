@@ -29,7 +29,7 @@ class SampleTypeController extends Controller
             });
         }
 
-        $sampleType = $query->orderByDesc('created_at')->orderBy('created_at', 'desc')->paginate($perPage);
+        $sampleType = $query->with('regulation:id,name')->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json($sampleType);
     }
@@ -49,7 +49,7 @@ class SampleTypeController extends Controller
      */
     public function show(SampleType $sampleType)
     {
-        return response()->json($sampleType);
+        return response()->json($sampleType->load('regulation'));
     }
 
     /**

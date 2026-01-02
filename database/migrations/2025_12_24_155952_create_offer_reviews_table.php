@@ -22,6 +22,7 @@ return new class extends Migration {
                 ->cascadeOnDelete();
 
             $table->foreignId('reviewer_id')
+                ->nullable()
                 ->constrained('users')
                 ->cascadeOnDelete();
 
@@ -36,7 +37,8 @@ return new class extends Migration {
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['offer_id', 'review_step_id']);
+            $table->index(['offer_id', 'decision']);
+            $table->index(['offer_id', 'review_step_id']);
         });
     }
 

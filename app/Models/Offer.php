@@ -29,4 +29,9 @@ class Offer extends Model
     {
         return $this->hasMany(OfferDetail::class);
     }
+
+    public function template()
+    {
+        return $this->belongsTo(Template::class);
+    }
 }
