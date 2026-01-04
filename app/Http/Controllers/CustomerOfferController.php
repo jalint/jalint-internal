@@ -9,7 +9,6 @@ use App\Models\ReviewStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class CustomerOfferController extends Controller
 {
@@ -40,7 +39,7 @@ class CustomerOfferController extends Controller
     {
         $customerId = auth('customer')->user()->customer_id;
 
-        $query = Offer::query()->select(['id', 'offer_number', 'title', 'offer_date', 'expired_date', 'status'])
+        $query = Offer::query()->select(['id', 'offer_number', 'title', 'offer_date', 'expired_date', 'status', 'customer_id'])
             ->where('customer_id', $customerId);
 
         switch ($request->filter) {
@@ -76,7 +75,7 @@ class CustomerOfferController extends Controller
             });
         }
 
-        $offers = $query
+        $offers = $query->with('customer:id,name')
             ->orderByDesc('created_at')
             ->paginate($request->per_page ? $request->per_page : 15);
 
@@ -85,103 +84,121 @@ class CustomerOfferController extends Controller
 
     public function store(StoreCustomerOfferRequest $request)
     {
-        try {
-            return DB::transaction(function () use ($request) {
-                $customerId = auth('customer')->id();
+        return DB::transaction(function () use ($request) {
+            $customerAccount = auth('customer')->user();
+            $customerId = $customerAccount->customer_id;
 
-                $offer = Offer::create([
-                    'offer_number' => $this->generateOfferNumber(),
-                    'title' => $request->title,
-                    'customer_id' => $customerId,
-                    'offer_date' => $request->offer_date,
-                    'expired_date' => $request->expired_date,
-                    'request_number' => $request->request_number,
-                    'status' => 'in_review',
-                    'created_by_id' => $customerId,
-                    'created_by_type' => 'customer',
+            /**
+             * 1️⃣ CREATE OFFER.
+             */
+            $offer = Offer::create([
+                'offer_number' => $this->generateOfferNumber(),
+                'title' => $request->title,
+                'customer_id' => $customerId,
+                'offer_date' => $request->offer_date,
+                'expired_date' => $request->expired_date,
+                'request_number' => $request->request_number,
+                'location' => $request->location,
+                'status' => 'in_review',
+                'created_by_id' => $customerAccount->id,
+                'created_by_type' => 'customer',
+            ]);
+
+            /*
+             * 2️⃣ CREATE SAMPLES + PARAMETERS
+             */
+            foreach ($request->samples as $sampleInput) {
+                $sample = $offer->samples()->create([
+                    'title' => $sampleInput['title'],
                 ]);
 
-                foreach ($request->details as $detail) {
-                    $offer->details()->create([
-                        'test_parameter_id' => $detail['test_parameter_id'],
-                        'price' => $detail['price'],
-                        'qty' => $detail['qty'],
-                        'subkon_id' => 1, // Default JLI
+                foreach ($sampleInput['parameters'] as $param) {
+                    $sample->parameters()->create([
+                        'test_parameter_id' => $param['test_parameter_id'],
+                        'price' => $param['price'],
+                        'qty' => $param['qty'],
+                        'subkon_id' => 1, // default internal
                     ]);
                 }
+            }
 
-                $firstStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
+            /**
+             * 3️⃣ FIRST REVIEW → ADMIN PENAWARAN.
+             */
+            $firstStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
 
-                OfferReview::create([
-                    'offer_id' => $offer->id,
-                    'review_step_id' => $firstStep->id,
-                    'reviewer_id' => null,
-                    'decision' => 'pending',
-                ]);
+            OfferReview::create([
+                'offer_id' => $offer->id,
+                'review_step_id' => $firstStep->id,
+                'decision' => 'pending',
+            ]);
 
-                return response()->json($offer);
-            });
-        } catch (\Throwable $th) {
-            Log::error('Failed to create customer offer', ['error' => $th->getMessage(), 'line' => $th->getLine(), 'code' => $th->getCode()]);
-
-            return response()->json(['message' => 'Terjadi Kesalahan'], 500);
-        }
+            return response()->json([
+                'message' => 'Penawaran berhasil dikirim',
+                'offer_id' => $offer->id,
+            ], 201);
+        });
     }
 
     public function show($id)
     {
-        $customerId = auth('customer')->user()->customer_id;
-        // dd($customerId);
+        $customerAccount = auth('customer')->user();
+
         $offer = Offer::with([
             'template',
-            'details.testParameter.testPackages.regulation',
-            'details.testPackage.regulation',
+            'samples.parameters.subkon',
+            'samples.parameters.testParameter.sampleType.regulation',
         ])
-        ->where('customer_id', $customerId)
+        ->where('customer_id', $customerAccount->customer_id)
         ->findOrFail($id);
 
-        /*
-         |-------------------------------------------------
-         | GROUP DETAIL BY TEST PACKAGE (UI FRIENDLY)
-         |-------------------------------------------------
+        /**
+         * =========================
+         * FORMAT SAMPLE DATA
+         * =========================.
          */
-        $groupedDetails = $offer->details
-            ->groupBy(function ($detail) {
-                return optional($detail->testPackage)->id
-                    ?? optional($detail->testParameter->testPackages->first())->id;
-            })
-            ->map(function ($items) {
-                $first = $items->first();
+        $samples = $offer->samples->map(function ($sample) {
+            $groups = $sample->parameters
+                ->groupBy(fn ($p) => $p->testParameter->sample_type_id)
+                ->map(function ($items) {
+                    $sampleType = $items->first()->testParameter->sampleType;
 
-                $package =
-                    $first->testPackage
-                    ?? $first->testParameter->testPackages->first();
+                    return [
+                        'sample_type' => [
+                            'id' => $sampleType?->id,
+                            'name' => $sampleType?->name,
+                            'regulation' => $sampleType && $sampleType->regulation ? [
+                                'id' => $sampleType->regulation->id,
+                                'name' => $sampleType->regulation->name,
+                            ] : null,
+                        ],
 
-                return [
-                    'test_package' => $package ? [
-                        'id' => $package->id,
-                        'name' => $package->name,
-                        'regulation' => $package->regulation,
-                    ] : null,
+                        'parameters' => $items->map(function ($param) {
+                            return [
+                                'id' => $param->testParameter->id,
+                                'name' => $param->testParameter->name,
+                                'unit_price' => $param->price,
+                                'qty' => $param->qty,
+                                'subtotal' => $param->price * $param->qty,
+                                'subkon' => $param->subkon ? [
+                                    'id' => $param->subkon->id,
+                                    'name' => $param->subkon->name,
+                                ] : null,
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
 
-                    'parameters' => $items->map(function ($detail) {
-                        return [
-                            'id' => $detail->testParameter->id,
-                            'name' => $detail->testParameter->name,
-                            'unit' => $detail->testParameter->unit,
-                            'price' => $detail->price,
-                            'qty' => $detail->qty,
-                            'total' => $detail->price * $detail->qty,
-                        ];
-                    })->values(),
-                ];
-            })
-            ->values();
+            return [
+                'id' => $sample->id,
+                'title' => $sample->title,
+                'sample_parameters' => $groups,
+            ];
+        });
 
         /*
-         |-------------------------------------------------
-         | RESPONSE
-         |-------------------------------------------------
+         * RESPONSE
          */
         return response()->json([
             'offer' => [
@@ -191,7 +208,6 @@ class CustomerOfferController extends Controller
                 'offer_date' => $offer->offer_date,
                 'expired_date' => $offer->expired_date,
                 'status' => $offer->status,
-                'additional_description' => $offer->additional_description,
                 'location' => $offer->location,
                 'subtotal_amount' => $offer->subtotal_amount,
                 'vat_amount' => $offer->ppn_amount,
@@ -200,7 +216,7 @@ class CustomerOfferController extends Controller
                 'payable_amount' => $offer->payable_amount,
                 'template' => $offer->template,
             ],
-            'details' => $groupedDetails,
+            'samples' => $samples,
         ]);
     }
 

@@ -10,9 +10,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('offer_details', function (Blueprint $table) {
+        Schema::create('offer_sample_parameters', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('offer_id')->constrained()->restrictOnDelete();
+            $table->foreignId('offer_sample_id')->constrained()->restrictOnDelete();
             $table->foreignId('test_parameter_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('subkon_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('test_package_id')->nullable()->constrained()->restrictOnDelete();
@@ -27,6 +27,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('offer_details');
+        Schema::dropIfExists('offer_sample_parameters');
     }
 };

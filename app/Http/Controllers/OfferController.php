@@ -15,21 +15,257 @@ use Illuminate\Support\Facades\Log;
 
 class OfferController extends Controller
 {
+    public function summary()
+    {
+        $user = auth()->user();
+        $role = $user->roles->first()->name;
+
+        $baseQuery = Offer::query()
+            ->with('currentReview.reviewStep');
+
+        $summary = [];
+
+        /*
+         * =========================
+         * SEMUA ROLE
+         * =========================
+         */
+        $summary['all'] = (clone $baseQuery)->count();
+
+        /*
+         * =========================
+         * ADMIN PENAWARAN
+         * =========================
+         */
+        if ($role === 'admin_penawaran') {
+            $summary['draft'] = (clone $baseQuery)
+                ->where('status', 'draft')
+                ->count();
+
+            $summary['in_review'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->count();
+
+            $summary['waiting_customer_validation'] = (clone $baseQuery)
+                ->where('created_by_type', 'customer')
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'admin_penawaran');
+                })
+                ->count();
+        }
+
+        /*
+         * =========================
+         * ADMIN KUPTDK
+         * =========================
+         */
+        if ($role === 'admin_kuptdk') {
+            $summary['kaji_ulang'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'admin_kuptdk');
+                })
+                ->count();
+
+            $summary['waiting_ma'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'manager_admin');
+                })
+                ->count();
+        }
+
+        /*
+         * =========================
+         * MANAGER ADMIN
+         * =========================
+         */
+        if ($role === 'manager_admin') {
+            $summary['verifikasi_kaji_ulang'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'manager_admin');
+                })
+                ->count();
+
+            $summary['waiting_mt'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'manager_teknis');
+                })
+                ->count();
+        }
+
+        /*
+         * =========================
+         * MANAGER TEKNIS
+         * =========================
+         */
+        if ($role === 'manager_teknis') {
+            $summary['verifikasi_kaji_ulang'] = (clone $baseQuery)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview.reviewStep', function ($q) {
+                    $q->where('code', 'manager_teknis');
+                })
+                ->count();
+
+            $summary['approved'] = (clone $baseQuery)
+                ->where('status', 'approved')
+                ->count();
+
+            $summary['rejected'] = (clone $baseQuery)
+                ->where('status', 'rejected')
+                ->count();
+        }
+
+        return response()->json($summary);
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $offers = Offer::with([
-            'reviews' => function ($q) {
-                $q->where('decision', 'pending')
-                  ->with('reviewStep');
-            }, 'createdBy:id,name',
-        ])
-         ->orderByDesc('created_at')
-         ->paginate();
+        $user = auth()->user();
+        $role = $user->roles->first()->name; // spatie
+        $filter = $request->query('filter', 'all');
 
-        return response()->json($offers);
+        $query = Offer::query()
+            ->with([
+                'customer:id,name',
+                'currentReview.reviewStep',
+            ])
+            ->orderByDesc('created_at');
+
+        /*
+         * =========================
+         * FILTER GLOBAL (SEMUA ROLE)
+         * =========================
+         */
+        if ($filter === 'draft') {
+            $query->where('status', 'draft');
+        }
+
+        if ($filter === 'in_review') {
+            $query->where('status', 'in_review');
+        }
+
+        if ($filter === 'approved') {
+            $query->where('status', 'approved');
+        }
+
+        if ($filter === 'rejected') {
+            $query->where('status', 'rejected');
+        }
+
+        /*
+         * =========================
+         * FILTER BERDASARKAN ROLE
+         * =========================
+         */
+        switch ($role) {
+            /*
+             * =========================
+             * ADMIN PENAWARAN
+             * =========================
+             */
+            case 'admin_penawaran':
+                if ($filter === 'waiting_customer_validation') {
+                    $query
+                        ->where('created_by_type', 'customer')
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'admin_penawaran');
+                        });
+                }
+
+                break;
+
+                /*
+                 * =========================
+                 * ADMIN KUPTDK
+                 * =========================
+                 */
+            case 'admin_kuptdk':
+                if ($filter === 'kaji_ulang') {
+                    $query
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'admin_kuptdk');
+                        });
+                }
+
+                if ($filter === 'waiting_ma') {
+                    $query
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'manager_admin');
+                        });
+                }
+
+                break;
+
+                /*
+                 * =========================
+                 * MANAGER ADMIN
+                 * =========================
+                 */
+            case 'manager_admin':
+                if ($filter === 'verifikasi_kaji_ulang') {
+                    $query
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'manager_admin');
+                        });
+                }
+
+                if ($filter === 'waiting_mt') {
+                    $query
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'manager_teknis');
+                        });
+                }
+
+                break;
+
+                /*
+                 * =========================
+                 * MANAGER TEKNIS
+                 * =========================
+                 */
+            case 'manager_teknis':
+                if ($filter === 'verifikasi_kaji_ulang') {
+                    $query
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview.reviewStep', function ($q) {
+                            $q->where('code', 'manager_teknis');
+                        });
+                }
+
+                if ($filter === 'approved') {
+                    $query->where('status', 'approved');
+                }
+
+                if ($filter === 'rejected') {
+                    $query->where('status', 'rejected');
+                }
+
+                break;
+        }
+
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('offer_number', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhereDate('offer_date', $search)
+                  ->orWhereDate('expired_date', $search)
+                  ->orWhere('status', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json($query->paginate($request->per_page ? $request->per_page : 15));
     }
 
     /**
@@ -46,56 +282,65 @@ class OfferController extends Controller
                 $offer = Offer::create([
                     'offer_number' => $this->generateOfferNumber(),
                     'title' => $request->title,
-
                     'customer_id' => $request->customer_id,
-                    'customer_contact_id' => $request->customer_contact_id,
-
                     'offer_date' => $request->offer_date,
                     'expired_date' => $request->expired_date,
-
                     'request_number' => $request->request_number,
                     'template_id' => $request->template_id,
-
                     'additional_description' => $request->additional_description,
-
+                    'location' => $request->location,
+                    'testing_activities' => $request->testing_activities,
                     'discount_amount' => $request->discount_amount ?? 0,
                     'vat_percent' => $request->vat_percent ?? 0,
                     'withholding_tax_percent' => $request->withholding_tax_percent ?? 0,
-
                     'status' => $status,
-                    'created_by' => auth()->id(),
+                    'created_by_id' => auth()->id(),
+                    'created_by_type' => 'admin',
                 ]);
 
-                foreach ($request->details as $detail) {
-                    $offer->details()->create([
-                        'test_parameter_id' => $detail['test_parameter_id'],
-                        'price' => $detail['price'],
-                        'qty' => $detail['qty'],
-                        'test_package_id' => $detail['test_package_id'] ?? null,
-                        'subkon_id' => 1, // Default JLI
+                /* =====================
+                 | CREATE SAMPLES & PARAMETERS
+                 ===================== */
+                foreach ($request->samples as $sampleData) {
+                    $sample = $offer->samples()->create([
+                        'title' => $sampleData['title'],
                     ]);
+
+                    foreach ($sampleData['parameters'] as $param) {
+                        $sample->parameters()->create([
+                            'test_parameter_id' => $param['test_parameter_id'],
+                            'test_package_id' => $param['test_package_id'] ?? null,
+                            'price' => $param['unit_price'],
+                            'qty' => $param['qty'],
+                            'subkon_id' => 1, // default internal
+                        ]);
+                    }
                 }
 
-                /*
-                 * Jika BUKAN draft → langsung masuk workflow review
-                 */
+                /* =====================
+                 | REVIEW WORKFLOW
+                 ===================== */
                 if ($status === 'in_review') {
                     $firstStep = ReviewStep::where('code', 'admin_kuptdk')->firstOrFail();
 
                     OfferReview::create([
                         'offer_id' => $offer->id,
                         'review_step_id' => $firstStep->id,
-                        'reviewer_id' => null,
                         'decision' => 'pending',
                     ]);
                 }
 
-                return response()->json($offer);
+                return response()->json($offer->load('samples.parameters'), 201);
             });
-        } catch (\Throwable $th) {
-            Log::error('Failed to create offer', ['error' => $th->getMessage(), 'line' => $th->getLine(), 'code' => $th->getCode()]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to create offer', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ]);
 
-            return response()->json(['message' => 'Terjadi Kesalahan'], 500);
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat membuat penawaran',
+            ], 500);
         }
     }
 
@@ -106,19 +351,20 @@ class OfferController extends Controller
     {
         $offer = Offer::with([
             'template',
+
             // review aktif
             'currentReview.reviewStep',
 
-            // history review
+            // history review (tanpa pending)
             'reviews' => function ($q) {
                 $q->where('decision', '!=', 'pending')
                   ->orderBy('created_at');
             },
             'reviews.reviewStep',
 
-            // detail penawaran (WAJIB eager load)
-            'details.subkon',
-            'details.testParameter.testPackages',
+            // RAW DATA (akan di-hide)
+            'samples.parameters.subkon',
+            'samples.parameters.testParameter.sampleType.regulation',
         ])->findOrFail($id);
 
         $currentReview = $offer->currentReview;
@@ -126,55 +372,60 @@ class OfferController extends Controller
         $canReview =
             $offer->status === 'in_review'
             && $currentReview
+            && auth()->check()
             && auth()->user()->hasRole($currentReview->reviewStep->code);
 
         /**
-         * GROUPING PARAMETER BERDASARKAN TEST PACKAGE.
+         * =========================
+         * FORMAT SAMPLE DATA
+         * sample → sample_type → parameters
+         * =========================.
          */
-        $groupedParameters = $offer->details
-            ->groupBy(function ($detail) {
-                return optional(
-                    $detail->testParameter
-                        ->testPackages
-                        ->first()
-                )->id ?? 'no_package';
-            })
-            ->map(function ($items) {
-                $package = optional(
-                    $items->first()
-                        ->testParameter
-                        ->testPackages
-                        ->first()
-                );
+        $samples = $offer->samples->map(function ($sample) {
+            $sampleParameters = $sample->parameters
+                ->groupBy(fn ($param) => $param->testParameter->sample_type_id)
+                ->map(function ($items) {
+                    $sampleType = $items->first()->testParameter->sampleType;
 
-                return [
-                    'test_package' => $package ? [
-                        'id' => $package->id,
-                        'name' => $package->name,
-                        'regulation' => $package->regulation ?? null,
-                    ] : null,
-
-                    'parameters' => $items->map(function ($detail) {
-                        return [
-                            'id' => $detail->testParameter->id,
-                            'name' => $detail->testParameter->name,
-                            'method' => $detail->testParameter->method ?? null,
-                            'price' => $detail->price,
-                            'qty' => $detail->qty,
-
-                            // RELASI BELONGS TO → AKSES LANGSUNG
-                            'subkon' => $detail->subkon ? [
-                                'id' => $detail->subkon->id,
-                                'name' => $detail->subkon->name,
+                    return [
+                        'sample_type' => [
+                            'id' => $sampleType?->id,
+                            'name' => $sampleType?->name,
+                            'regulation' => $sampleType && $sampleType->regulation ? [
+                                'id' => $sampleType->regulation->id,
+                                'name' => $sampleType->regulation->name,
                             ] : null,
-                        ];
-                    })->values(),
-                ];
-            })
-            ->values();
+                        ],
 
-        // sembunyikan details mentah
-        $offer->makeHidden(['details']);
+                        'parameters' => $items->map(function ($param) {
+                            return [
+                                'id' => $param->testParameter->id,
+                                'name' => $param->testParameter->name,
+                                'method' => $param->testParameter->method ?? null,
+                                'unit_price' => $param->price,
+                                'qty' => $param->qty,
+                                'subtotal' => $param->price * $param->qty,
+                                'subkon' => $param->subkon ? [
+                                    'id' => $param->subkon->id,
+                                    'name' => $param->subkon->name,
+                                ] : null,
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
+
+            return [
+                'id' => $sample->id,
+                'title' => $sample->title,
+                'sample_parameters' => $sampleParameters,
+            ];
+        });
+
+        /*
+         * HIDE RELASI MENTAH
+         */
+        $offer->makeHidden(['samples']);
 
         return response()->json([
             'can_review' => $canReview,
@@ -183,7 +434,7 @@ class OfferController extends Controller
                 'code' => $currentReview->reviewStep->code,
                 'name' => $currentReview->reviewStep->name,
             ] : null,
-            'details' => $groupedParameters,
+            'samples' => $samples,
         ]);
     }
 
@@ -200,24 +451,27 @@ class OfferController extends Controller
              */
             $offer = Offer::with([
                 'reviews.reviewStep',
-                'details',
+                'samples.parameters',
             ])
                 ->lockForUpdate()
                 ->findOrFail($id);
 
             /*
-             * 2️⃣ Validasi STATE & ROLE
+             * 2️⃣ Validasi STATE
              */
             if ($offer->status !== 'rejected') {
                 abort(400, 'Penawaran hanya dapat direvisi jika status rejected');
             }
 
+            /*
+             * 3️⃣ Validasi ROLE
+             */
             if (!$user->hasRole('admin_kuptdk')) {
                 abort(403, 'Hanya Admin KUPTDK yang dapat merevisi penawaran');
             }
 
             /**
-             * 3️⃣ Pastikan review TERAKHIR adalah REJECT.
+             * 4️⃣ Pastikan review terakhir = rejected.
              */
             $lastReview = $offer->reviews()
                 ->latest('created_at')
@@ -228,7 +482,7 @@ class OfferController extends Controller
             }
 
             /*
-             * 4️⃣ Update OFFER HEADER
+             * 5️⃣ Update OFFER HEADER
              */
             $offer->update([
                 'title' => $request->title,
@@ -239,30 +493,38 @@ class OfferController extends Controller
                 'request_number' => $request->request_number,
                 'template_id' => $request->template_id,
                 'additional_description' => $request->additional_description,
+                'location' => $request->location,
+                'testing_activities' => $request->testing_activities,
                 'discount_amount' => $request->discount_amount ?? 0,
                 'vat_percent' => $request->vat_percent ?? 0,
                 'withholding_tax_percent' => $request->withholding_tax_percent ?? 0,
                 'status' => 'in_review',
-                'testing_activities' => $request->testing_activities,
             ]);
 
             /*
-             * 5️⃣ REFRESH DETAIL PENAWARAN
-             * (hapus & recreate → paling aman untuk revisi)
+             * 6️⃣ RESET SAMPLE & PARAMETER
+             * (hapus & recreate → aman untuk revisi)
              */
-            $offer->details()->delete();
+            $offer->samples()->delete();
 
-            foreach ($request->details as $detail) {
-                $offer->details()->create([
-                    'test_parameter_id' => $detail['test_parameter_id'],
-                    'price' => $detail['price'],
-                    'qty' => $detail['qty'],
-                    'subkon_id' => 1, // default internal
+            foreach ($request->samples as $sampleData) {
+                $sample = $offer->samples()->create([
+                    'title' => $sampleData['title'],
                 ]);
+
+                foreach ($sampleData['parameters'] as $param) {
+                    $sample->parameters()->create([
+                        'test_parameter_id' => $param['test_parameter_id'],
+                        'test_package_id' => $param['test_package_id'] ?? null,
+                        'unit_price' => $param['unit_price'],
+                        'qty' => $param['qty'],
+                        'subkon_id' => 1, // default internal
+                    ]);
+                }
             }
 
             /**
-             * 6️⃣ SNAPSHOT: Admin KUPTDK AUTO-APPROVE.
+             * 7️⃣ SNAPSHOT: Admin KUPTDK AUTO APPROVE.
              */
             $adminKuptdkStep = ReviewStep::where('code', 'admin_kuptdk')->firstOrFail();
 
@@ -276,9 +538,9 @@ class OfferController extends Controller
             ]);
 
             /**
-             * 7️⃣ LANJUT KE MANAGER ADMIN.
+             * 8️⃣ LANJUT KE STEP BERIKUTNYA (Manager Admin).
              */
-            $managerAdminStep = ReviewStep::where(
+            $nextStep = ReviewStep::where(
                 'sequence_order',
                 '>',
                 $adminKuptdkStep->sequence_order
@@ -286,30 +548,23 @@ class OfferController extends Controller
                 ->orderBy('sequence_order')
                 ->first();
 
-            if (!$managerAdminStep) {
+            if (!$nextStep) {
                 abort(500, 'Step review selanjutnya tidak ditemukan');
             }
 
             OfferReview::create([
                 'offer_id' => $offer->id,
-                'review_step_id' => $managerAdminStep->id,
+                'review_step_id' => $nextStep->id,
                 'decision' => 'pending',
             ]);
 
             /*
-             * 8️⃣ DONE
+             * 9️⃣ DONE
              */
             return response()->json([
                 'message' => 'Penawaran berhasil direvisi dan dikirim ulang untuk review',
             ]);
         });
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Offer $offer)
-    {
     }
 
     public function review(Request $request, $id)

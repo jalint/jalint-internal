@@ -61,6 +61,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::apiResource('users', UserController::class);
 
+    Route::get('offers/summary', [OfferController::class, 'summary']);
     Route::post('offers/{offer}/review', [OfferController::class, 'review']);
+
     Route::apiResource('offers', OfferController::class);
 });

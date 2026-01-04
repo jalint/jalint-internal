@@ -8,9 +8,9 @@ class Offer extends Model
 {
     protected $guarded = [];
 
-    public function reviews()
+    public function customer()
     {
-        return $this->hasMany(OfferReview::class);
+        return $this->belongsTo(Customer::class);
     }
 
     // helper (opsional tapi sangat berguna)
@@ -33,5 +33,57 @@ class Offer extends Model
     public function template()
     {
         return $this->belongsTo(Template::class);
+    }
+
+    /* =======================
+     | RELATIONS
+     ======================= */
+
+    // Satu penawaran → banyak contoh uji
+    public function samples()
+    {
+        return $this->hasMany(OfferSample::class);
+    }
+
+    // Review workflow
+    public function reviews()
+    {
+        return $this->hasMany(OfferReview::class);
+    }
+
+    // public function currentReview()
+    // {
+    //     return $this->hasOne(OfferReview::class)
+    //         ->where('decision', 'pending')
+    //         ->latestOfMany();
+    // }
+
+    /* =======================
+     | CALCULATED ATTRIBUTES
+     ======================= */
+
+    public function getSubtotalAmountAttribute()
+    {
+        return $this->samples
+            ->flatMap->parameters
+            ->sum(fn ($p) => $p->unit_price * $p->qty);
+    }
+
+    public function getVatAmountAttribute()
+    {
+        return $this->subtotal_amount * ($this->vat_percent / 100);
+    }
+
+    public function getWithholdingTaxAmountAttribute()
+    {
+        return $this->subtotal_amount * ($this->withholding_tax_percent / 100);
+    }
+
+    public function getTotalAmountAttribute()
+    {
+        return $this->subtotal_amount
+            - $this->discount_amount
+            + $this->vat_amount
+            - $this->withholding_tax_amount;
     }
 }
