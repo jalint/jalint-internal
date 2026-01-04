@@ -645,6 +645,15 @@ class OfferController extends Controller
                     'status' => 'rejected',
                 ]);
 
+                $nextStep = ReviewStep::where('code', 'admin_kuptdk')
+                ->first();
+
+                OfferReview::create([
+                    'offer_id' => $offer->id,
+                    'review_step_id' => $nextStep->id,
+                    'decision' => 'pending',
+                ]);
+
                 return response()->json([
                     'message' => 'Penawaran ditolak',
                 ]);
