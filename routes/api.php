@@ -33,6 +33,7 @@ Route::post('/customer/login', [AuthController::class, 'loginCustomer']);
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
         Route::get('customers/offers/summary', [CustomerOfferController::class, 'summary']);
+        Route::get('customers/offers/review', [CustomerOfferController::class, 'reviewCustomer']);
         Route::apiResource(
             'customers/offers',
             CustomerOfferController::class

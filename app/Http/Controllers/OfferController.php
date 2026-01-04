@@ -6,6 +6,7 @@ use App\Http\Requests\StoreOfferRequest;
 use App\Http\Requests\UpdateOfferRequest;
 use App\Models\Offer;
 use App\Models\OfferReview;
+use App\Models\OfferSampleParameter;
 use App\Models\ReviewStep;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -569,69 +570,76 @@ class OfferController extends Controller
 
     public function review(Request $request, $id)
     {
+        $user = auth()->user();
+
         $rules = [
             'decision' => 'required|in:approved,rejected',
             'note' => 'nullable|string',
         ];
 
-        // HANYA admin KUPTDK yang wajib kirim details
-        if (auth()->user()->hasRole('admin_kuptdk')) {
-            $rules['details'] = 'required|array';
-            $rules['details.*.id'] = 'required|integer|exists:offer_details,id';
-            $rules['details.*.test_parameter_id'] = 'required|exists:test_parameters,id';
-            $rules['details.*.subkon_id'] = 'required|exists:subkons,id';
-            $rules['details.*.price'] = 'required|min:0';
-            $rules['details.*.is_delete'] = 'sometimes|boolean';
-            $rules['testing_activities'] = 'required';
-        } else {
-            // role lain: optional
-            $rules['details'] = 'nullable|array';
+        /*
+         * =========================
+         * ADMIN KUPTDK – WAJIB DETAIL
+         * =========================
+         */
+        if ($user->hasRole('admin_kuptdk')) {
+            $rules = array_merge($rules, [
+                'testing_activities' => 'required|string',
+                'details' => 'required|array|min:1',
+                'details.*.id' => 'required|exists:offer_sample_parameters,id',
+                'details.*.test_parameter_id' => 'required|exists:test_parameters,id',
+                'details.*.subkon_id' => 'required|exists:subkons,id',
+                'details.*.price' => 'required|numeric|min:0',
+                'details.*.qty' => 'required|integer|min:1',
+                'details.*.is_delete' => 'sometimes|boolean',
+            ]);
         }
 
         $validated = $request->validate($rules);
 
-        if (isset($validated['details'])) {
-            $validated['details'] = collect($validated['details'])
-                ->map(function ($detail) {
-                    $detail['is_delete'] = $detail['is_delete'] ?? false;
-
-                    return $detail;
-                })
-                ->toArray();
-        }
-
-        $user = auth()->user();
-
         return DB::transaction(function () use ($validated, $id, $user) {
-            $offer = Offer::with('currentReview.reviewStep')
+            $offer = Offer::with([
+                'currentReview.reviewStep',
+                'samples.parameters',
+            ])
                 ->lockForUpdate()
                 ->findOrFail($id);
 
-            // 1. Offer harus dalam review
+            /*
+             * =========================
+             * VALIDASI WORKFLOW
+             * =========================
+             */
             if ($offer->status !== 'in_review') {
                 abort(400, 'Offer tidak dalam proses review');
             }
 
             $currentReview = $offer->currentReview;
-            // 2. Harus ada review aktif
             if (!$currentReview) {
                 abort(400, 'Tidak ada review aktif');
             }
 
-            // 3. Role harus sesuai step
             if (!$user->hasRole($currentReview->reviewStep->code)) {
                 abort(403, 'Anda tidak berhak mereview penawaran ini');
             }
 
-            // 4. Update review saat ini
+            /*
+             * =========================
+             * UPDATE REVIEW SAAT INI
+             * =========================
+             */
             $currentReview->update([
                 'decision' => $validated['decision'],
-                'note' => $validated['note'],
+                'note' => $validated['note'] ?? null,
                 'reviewer_id' => $user->id,
                 'reviewed_at' => now(),
             ]);
 
-            // 5. Jika REJECT → stop workflow
+            /*
+             * =========================
+             * JIKA REJECT → STOP
+             * =========================
+             */
             if ($validated['decision'] === 'rejected') {
                 $offer->update([
                     'status' => 'rejected',
@@ -642,20 +650,28 @@ class OfferController extends Controller
                 ]);
             }
 
-            if ($currentReview->reviewStep->code == 'admin_kuptdk') {
+            /*
+             * =========================
+             * ADMIN KUPTDK – UPDATE PARAMETER
+             * =========================
+             */
+            if ($currentReview->reviewStep->code === 'admin_kuptdk') {
                 foreach ($validated['details'] as $detail) {
-                    if ($detail['is_delete']) {
-                        $offer->details()
-                            ->where('id', $detail['id'])
-                            ->delete();
+                    $param = OfferSampleParameter::whereHas('sample', function ($q) use ($offer) {
+                        $q->where('offer_id', $offer->id);
+                    })
+                        ->lockForUpdate()
+                        ->findOrFail($detail['id']);
+
+                    if (!empty($detail['is_delete']) && $detail['is_delete']) {
+                        $param->delete();
                     } else {
-                        $offer->details()
-                            ->where('id', $detail['id'])
-                            ->update([
-                                'test_parameter_id' => $detail['test_parameter_id'],
-                                'subkon_id' => $detail['subkon_id'],
-                                'price' => $detail['price'],
-                            ]);
+                        $param->update([
+                            'test_parameter_id' => $detail['test_parameter_id'],
+                            'subkon_id' => $detail['subkon_id'],
+                            'price' => $detail['price'],
+                            'qty' => $detail['qty'],
+                        ]);
                     }
                 }
 
@@ -664,12 +680,15 @@ class OfferController extends Controller
                 ]);
             }
 
-            // 6. Cari step berikutnya
+            /**
+             * =========================
+             * STEP BERIKUTNYA
+             * =========================.
+             */
             $nextStep = ReviewStep::where('sequence_order', '>', $currentReview->reviewStep->sequence_order)
                 ->orderBy('sequence_order')
                 ->first();
 
-            // 7. Kalau masih ada step → lanjut review
             if ($nextStep) {
                 OfferReview::create([
                     'offer_id' => $offer->id,
@@ -682,7 +701,11 @@ class OfferController extends Controller
                 ]);
             }
 
-            // 8. Kalau tidak ada step → FINAL APPROVE
+            /*
+             * =========================
+             * FINAL APPROVE
+             * =========================
+             */
             $offer->update([
                 'status' => 'approved',
             ]);

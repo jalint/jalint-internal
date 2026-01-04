@@ -220,6 +220,88 @@ class CustomerOfferController extends Controller
         ]);
     }
 
+    public function reviewCustomer(Request $request, $id)
+    {
+        $customer = auth('customer')->user();
+
+        $validated = $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'note' => 'nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($validated, $id, $customer) {
+            $offer = Offer::with([
+                'currentReview.reviewStep',
+            ])
+                ->lockForUpdate()
+                ->where('customer_id', $customer->customer_id)
+                ->findOrFail($id);
+
+            /*
+             * =========================
+             * VALIDASI STATE
+             * =========================
+             */
+            if ($offer->status !== 'in_review') {
+                abort(400, 'Penawaran tidak dalam tahap persetujuan pelanggan');
+            }
+
+            $currentReview = $offer->currentReview;
+
+            if (!$currentReview || $currentReview->reviewStep->code !== 'customer') {
+                abort(403, 'Penawaran belum masuk tahap persetujuan pelanggan');
+            }
+
+            /*
+             * =========================
+             * UPDATE REVIEW CUSTOMER
+             * =========================
+             */
+            $currentReview->update([
+                'decision' => $validated['decision'],
+                'note' => $validated['note'] ?? null,
+                'reviewer_id' => $customer->id,
+                'reviewed_at' => now(),
+            ]);
+
+            /*
+             * =========================
+             * CUSTOMER APPROVE → FINAL
+             * =========================
+             */
+            if ($validated['decision'] === 'approved') {
+                $offer->update([
+                    'status' => 'approved',
+                ]);
+
+                return response()->json([
+                    'message' => 'Penawaran disetujui oleh pelanggan',
+                ]);
+            }
+
+            /*
+             * =========================
+             * CUSTOMER REJECT → KEMBALI KE ADMIN KUPTDK
+             * =========================
+             */
+            $offer->update([
+                'status' => 'rejected',
+            ]);
+
+            $adminKuptdkStep = ReviewStep::where('code', 'admin_kuptdk')->firstOrFail();
+
+            OfferReview::create([
+                'offer_id' => $offer->id,
+                'review_step_id' => $adminKuptdkStep->id,
+                'decision' => 'pending',
+            ]);
+
+            return response()->json([
+                'message' => 'Penawaran ditolak pelanggan dan dikembalikan ke Admin KUPTDK',
+            ]);
+        });
+    }
+
     protected function generateOfferNumber(): string
     {
         $now = Carbon::now();
