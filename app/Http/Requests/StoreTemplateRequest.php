@@ -11,7 +11,7 @@ class StoreTemplateRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,9 @@ class StoreTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name' => 'required',
+            'body' => 'required',
+            'is_active' => 'required|boolean',
         ];
     }
 }
