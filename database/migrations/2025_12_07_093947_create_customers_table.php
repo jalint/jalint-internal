@@ -16,9 +16,6 @@ return new class extends Migration {
             $table->foreignId('customer_type_id')
                   ->constrained('customer_types')
                   ->noActionOnDelete();
-            $table->foreignId('customer_account_id')
-                  ->constrained('customer_accounts')
-                  ->cascadeOnDelete();
             $table->boolean('status')->default(true);
             $table->string('email')->unique();
             $table->string('npwp')->unique();

@@ -56,7 +56,7 @@ class EmployeeController extends Controller
             // );
 
             // 3. Buat employee
-            $employee = Employee::create($$request->validated());
+            $employee = Employee::create($request->validated());
 
             // 4. Attach certifications
             if ($request->filled('certifications')) {
