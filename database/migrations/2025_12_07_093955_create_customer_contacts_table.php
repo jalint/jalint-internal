@@ -19,7 +19,6 @@ return new class extends Migration {
             $table->string('email')->nullable()->index();
             $table->string('phone')->nullable()->index();
             $table->string('npwp')->nullable();
-            $table->string('position')->nullable();     // billing, technical, primary, etc.
             $table->timestamps();
         });
     }
