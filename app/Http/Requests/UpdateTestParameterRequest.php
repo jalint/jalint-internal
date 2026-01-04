@@ -27,6 +27,7 @@ class UpdateTestParameterRequest extends FormRequest
             'name' => ['required',  Rule::unique('test_parameters', 'name')->ignore($this->route('test_parameter'))],
             'unit' => 'required|string',
             'test_method_id' => 'required|exists:test_methods,id',
+            'sample_type_id' => 'required|exists:sample_types,id',
             'price' => 'required|numeric|min:0',
             'standard_min_value' => 'nullable',
             'standard_max_value' => 'nullable',

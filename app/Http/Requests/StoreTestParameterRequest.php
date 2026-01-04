@@ -26,6 +26,7 @@ class StoreTestParameterRequest extends FormRequest
             'name' => 'required|unique:test_parameters,name',
             'unit' => 'required|string',
             'test_method_id' => 'required|exists:test_methods,id',
+            'sample_type_id' => 'required|exists:sample_types,id',
             'price' => 'required',
             'standard_min_value' => 'nullable',
             'standard_max_value' => 'nullable',
