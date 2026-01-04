@@ -517,7 +517,7 @@ class OfferController extends Controller
                     $sample->parameters()->create([
                         'test_parameter_id' => $param['test_parameter_id'],
                         'test_package_id' => $param['test_package_id'] ?? null,
-                        'unit_price' => $param['unit_price'],
+                        'price' => $param['unit_price'],
                         'qty' => $param['qty'],
                         'subkon_id' => 1, // default internal
                     ]);
@@ -645,14 +645,14 @@ class OfferController extends Controller
                     'status' => 'rejected',
                 ]);
 
-                $nextStep = ReviewStep::where('code', 'admin_kuptdk')
-                ->first();
+                // $nextStep = ReviewStep::where('code', 'admin_kuptdk')
+                // ->first();
 
-                OfferReview::create([
-                    'offer_id' => $offer->id,
-                    'review_step_id' => $nextStep->id,
-                    'decision' => 'pending',
-                ]);
+                // OfferReview::create([
+                //     'offer_id' => $offer->id,
+                //     'review_step_id' => $nextStep->id,
+                //     'decision' => 'pending',
+                // ]);
 
                 return response()->json([
                     'message' => 'Penawaran ditolak',

@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('offer_sample_parameters', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('offer_sample_id')->constrained()->restrictOnDelete();
+            $table->foreignId('offer_sample_id')->constrained()->cascadeOnDelete();
             $table->foreignId('test_parameter_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('subkon_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignId('test_package_id')->nullable()->constrained()->restrictOnDelete();
