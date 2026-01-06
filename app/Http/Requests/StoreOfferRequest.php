@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 
 class StoreOfferRequest extends FormRequest
 {
@@ -48,4 +49,21 @@ class StoreOfferRequest extends FormRequest
             'samples.*.parameters.*.qty' => ['required', 'integer', 'min:1'],
         ];
     }
+
+    // protected function prepareForValidation()
+    // {
+    //     if ($this->offer_date) {
+    //         $this->merge([
+    //             'offer_date' => Carbon::createFromFormat('d-m-Y', $this->offer_date)
+    //                 ->format('Y-m-d'),
+    //         ]);
+    //     }
+
+    //     if ($this->expired_date) {
+    //         $this->merge([
+    //             'expired_date' => Carbon::createFromFormat('d-m-Y', $this->expired_date)
+    //                 ->format('Y-m-d'),
+    //         ]);
+    //     }
+    // }
 }

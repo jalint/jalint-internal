@@ -86,4 +86,9 @@ class Offer extends Model
             + $this->vat_amount
             - $this->withholding_tax_amount;
     }
+
+    public function taskLetter()
+    {
+        return $this->hasOne(TaskLetter::class);
+    }
 }

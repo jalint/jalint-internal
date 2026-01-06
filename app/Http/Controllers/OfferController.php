@@ -352,6 +352,9 @@ class OfferController extends Controller
     {
         $offer = Offer::with([
             'template',
+            'customer' => function ($query) {
+                $query->select(['id', 'name'])->with('customerContact:id,customer_id,name,position,phone');
+            },
 
             // review aktif
             'currentReview.reviewStep',
@@ -400,8 +403,11 @@ class OfferController extends Controller
 
                         'parameters' => $items->map(function ($param) {
                             return [
-                                'id' => $param->testParameter->id,
+                                'id' => $param->id,
+                                'offer_sample_id' => $param->offer_sample_id,
+                                'test_parameter_id' => $param->testParameter->id,
                                 'name' => $param->testParameter->name,
+                                'status' => $param->testParameter->status,
                                 'method' => $param->testParameter->method ?? null,
                                 'unit_price' => $param->price,
                                 'qty' => $param->qty,
