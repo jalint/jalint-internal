@@ -9,6 +9,7 @@ use App\Models\OfferReview;
 use App\Models\OfferSampleParameter;
 use App\Models\ReviewStep;
 use App\Models\User;
+use App\Queries\OfferVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,257 +17,190 @@ use Illuminate\Support\Facades\Log;
 
 class OfferController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function summary()
     {
         $user = auth()->user();
         $role = $user->roles->first()->name;
 
-        $baseQuery = Offer::query()
+        $base = OfferVisibility::forRole($role)
             ->with('currentReview.reviewStep');
 
         $summary = [];
 
-        /*
-         * =========================
-         * SEMUA ROLE
-         * =========================
-         */
-        $summary['all'] = (clone $baseQuery)->count();
+        // Semua data = semua yang visible untuk role
+        $summary['all'] = (clone $base)->count();
 
-        /*
-         * =========================
-         * ADMIN PENAWARAN
-         * =========================
-         */
-        if ($role === 'admin_penawaran') {
-            $summary['draft'] = (clone $baseQuery)
-                ->where('status', 'draft')
-                ->count();
+        switch ($role) {
+            case 'admin_penawaran':
+                $summary['draft'] = (clone $base)->where('status', 'draft')->count();
 
-            $summary['in_review'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->count();
+                $summary['in_review'] = (clone $base)->where('status', 'in_review')->count();
 
-            $summary['waiting_customer_validation'] = (clone $baseQuery)
-                ->where('created_by_type', 'customer')
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'admin_penawaran');
-                })
-                ->count();
-        }
+                $summary['verif_pelanggan'] = (clone $base)
+                  ->where('created_by_type', 'customer')
+                    ->whereHas('currentReview', function ($q) {
+                        $q->where('decision', 'pending')
+                        ->whereHas('reviewStep', function ($qs) {
+                            $qs->where('code', 'admin_penawaran');
+                        });
+                    })
+                    ->count();
 
-        /*
-         * =========================
-         * ADMIN KUPTDK
-         * =========================
-         */
-        if ($role === 'admin_kuptdk') {
-            $summary['kaji_ulang'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'admin_kuptdk');
-                })
-                ->count();
+                $summary['approved'] = (clone $base)
+                    ->whereIn('status', ['approved', 'completed'])
+                    ->count();
 
-            $summary['waiting_ma'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'manager_admin');
-                })
-                ->count();
-        }
+                $summary['rejected'] = (clone $base)
+                    ->where('status', 'rejected')
+                    ->count();
+                break;
 
-        /*
-         * =========================
-         * MANAGER ADMIN
-         * =========================
-         */
-        if ($role === 'manager_admin') {
-            $summary['verifikasi_kaji_ulang'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'manager_admin');
-                })
-                ->count();
+            case 'admin_kuptdk':
+                $summary['kaji_ulang'] = (clone $base)
+                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'admin_kuptdk')
+                    )
+                    ->count();
 
-            $summary['waiting_mt'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'manager_teknis');
-                })
-                ->count();
-        }
+                $summary['waiting_ma'] = (clone $base)
+                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_admin')
+                    )
+                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                    )
+                    ->count();
 
-        /*
-         * =========================
-         * MANAGER TEKNIS
-         * =========================
-         */
-        if ($role === 'manager_teknis') {
-            $summary['verifikasi_kaji_ulang'] = (clone $baseQuery)
-                ->where('status', 'in_review')
-                ->whereHas('currentReview.reviewStep', function ($q) {
-                    $q->where('code', 'manager_teknis');
-                })
-                ->count();
+                $summary['waiting_mt'] = (clone $base)
+                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    )
+                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                    )
+                    ->count();
 
-            $summary['approved'] = (clone $baseQuery)
-                ->where('status', 'approved')
-                ->count();
+                $summary['approved'] = (clone $base)
+                    ->whereIn('status', ['approved', 'completed'])
+                    ->count();
 
-            $summary['rejected'] = (clone $baseQuery)
-                ->where('status', 'rejected')
-                ->count();
+                $summary['rejected'] = (clone $base)
+                    ->where('status', 'rejected')
+                    ->count();
+                break;
+
+            case 'manager_admin':
+                $summary['verifikasi'] = (clone $base)
+                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_admin')
+                    )
+                    ->count();
+
+                $summary['approved'] = (clone $base)
+                    ->whereIn('status', ['approved', 'completed'])
+                    ->count();
+
+                $summary['rejected'] = (clone $base)
+                    ->where('status', 'rejected')
+                    ->count();
+                break;
+
+            case 'manager_teknis':
+                $summary['verifikasi'] = (clone $base)
+                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    )
+                    ->count();
+
+                $summary['approved'] = (clone $base)
+                    ->whereIn('status', ['approved', 'completed'])
+                    ->count();
+
+                $summary['rejected'] = (clone $base)
+                    ->where('status', 'rejected')
+                    ->count();
+                break;
         }
 
         return response()->json($summary);
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $user = auth()->user();
-        $role = $user->roles->first()->name; // spatie
+        $role = $user->roles->first()->name;
         $filter = $request->query('filter', 'all');
 
-        $query = Offer::query()
+        $query = OfferVisibility::forRole($role)
             ->with([
                 'customer:id,name',
                 'currentReview.reviewStep',
             ])
             ->orderByDesc('created_at');
 
-        /*
-         * =========================
-         * FILTER GLOBAL (SEMUA ROLE)
-         * =========================
-         */
-        if ($filter === 'draft') {
-            $query->where('status', 'draft');
-        }
+        switch ($role) {
+            case 'admin_penawaran':
+                if ($filter === 'draft') {
+                    $query->where('status', 'draft');
+                }
 
-        if ($filter === 'in_review') {
-            $query->where('status', 'in_review');
+                if ($filter === 'verif_pelanggan') {
+                    $query->where('created_by_type', 'customer')
+                          ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'admin_penawaran')
+                          );
+                }
+                break;
+
+            case 'admin_kuptdk':
+                if ($filter === 'kaji_ulang') {
+                    $query->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'admin_kuptdk')
+                    );
+                }
+
+                if ($filter === 'waiting_ma') {
+                    $query->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_admin')
+                    )
+                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                    );
+                }
+
+                if ($filter === 'waiting_mt') {
+                    $query->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    )
+                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                    );
+                }
+                break;
+
+            case 'manager_admin':
+                if ($filter === 'verifikasi') {
+                    $query->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_admin')
+                    );
+                }
+                break;
+
+            case 'manager_teknis':
+                if ($filter === 'verifikasi') {
+                    $query->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    );
+                }
+                break;
         }
 
         if ($filter === 'approved') {
-            $query->where('status', 'approved');
+            $query->whereIn('status', ['approved', 'completed']);
         }
 
         if ($filter === 'rejected') {
             $query->where('status', 'rejected');
         }
 
-        /*
-         * =========================
-         * FILTER BERDASARKAN ROLE
-         * =========================
-         */
-        switch ($role) {
-            /*
-             * =========================
-             * ADMIN PENAWARAN
-             * =========================
-             */
-            case 'admin_penawaran':
-                if ($filter === 'waiting_customer_validation') {
-                    $query
-                        ->where('created_by_type', 'customer')
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'admin_penawaran');
-                        });
-                }
-
-                break;
-
-                /*
-                 * =========================
-                 * ADMIN KUPTDK
-                 * =========================
-                 */
-            case 'admin_kuptdk':
-                if ($filter === 'kaji_ulang') {
-                    $query
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'admin_kuptdk');
-                        });
-                }
-
-                if ($filter === 'waiting_ma') {
-                    $query
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'manager_admin');
-                        });
-                }
-
-                break;
-
-                /*
-                 * =========================
-                 * MANAGER ADMIN
-                 * =========================
-                 */
-            case 'manager_admin':
-                if ($filter === 'verifikasi_kaji_ulang') {
-                    $query
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'manager_admin');
-                        });
-                }
-
-                if ($filter === 'waiting_mt') {
-                    $query
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'manager_teknis');
-                        });
-                }
-
-                break;
-
-                /*
-                 * =========================
-                 * MANAGER TEKNIS
-                 * =========================
-                 */
-            case 'manager_teknis':
-                if ($filter === 'verifikasi_kaji_ulang') {
-                    $query
-                        ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', function ($q) {
-                            $q->where('code', 'manager_teknis');
-                        });
-                }
-
-                if ($filter === 'approved') {
-                    $query->where('status', 'approved');
-                }
-
-                if ($filter === 'rejected') {
-                    $query->where('status', 'rejected');
-                }
-
-                break;
-        }
-
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
                 $q->where('offer_number', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhereDate('offer_date', $search)
-                  ->orWhereDate('expired_date', $search)
-                  ->orWhere('status', 'like', "%{$search}%");
+                  ->orWhere('title', 'like', "%{$search}%");
             });
         }
 
-        return response()->json($query->paginate($request->per_page ? $request->per_page : 15));
+        return response()->json(
+            $query->paginate($request->per_page ?? 15)
+        );
     }
 
     /**
@@ -838,5 +772,15 @@ class OfferController extends Controller
         }
 
         return $currentReview->reviewStep->code === $user->role;
+    }
+
+    private function baseRoleQuery(string $role)
+    {
+        return Offer::query()
+            ->with(['customer:id,name', 'currentReview.reviewStep'])
+            ->when($role !== 'admin_penawaran', function ($q) {
+                // admin_penawaran boleh lihat draft
+                $q->where('status', '!=', 'draft');
+            });
     }
 }
