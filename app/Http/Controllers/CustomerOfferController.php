@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCustomerOfferRequest;
 use App\Models\Offer;
 use App\Models\OfferReview;
 use App\Models\ReviewStep;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -274,30 +275,32 @@ class CustomerOfferController extends Controller
                     'status' => 'approved',
                 ]);
 
+                app(InvoiceService::class)->createFromOffer($offer);
+
                 return response()->json([
-                    'message' => 'Penawaran disetujui oleh pelanggan',
+                    'message' => 'Penawaran disetujui, invoice telah dibuat',
                 ]);
             }
 
             /*
              * =========================
-             * CUSTOMER REJECT → KEMBALI KE ADMIN KUPTDK
+             * CUSTOMER REJECT → KEMBALI KE ADMIN Penawaran
              * =========================
              */
             $offer->update([
                 'status' => 'rejected',
             ]);
 
-            $adminKuptdkStep = ReviewStep::where('code', 'admin_kuptdk')->firstOrFail();
+            $adminPenawaranStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
 
             OfferReview::create([
                 'offer_id' => $offer->id,
-                'review_step_id' => $adminKuptdkStep->id,
+                'review_step_id' => $adminPenawaranStep->id,
                 'decision' => 'pending',
             ]);
 
             return response()->json([
-                'message' => 'Penawaran ditolak pelanggan dan dikembalikan ke Admin KUPTDK',
+                'message' => 'Penawaran ditolak pelanggan dan dikembalikan ke Admin Penawaran',
             ]);
         });
     }
