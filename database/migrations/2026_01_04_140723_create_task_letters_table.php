@@ -18,6 +18,7 @@ return new class extends Migration {
                 ->cascadeOnDelete();
 
             $table->string('task_letter_number')->unique();
+            $table->string('status');
             $table->date('task_date');
 
             $table->text('note')->nullable();

@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class TaskLetterOfficer extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'task_letter_id', 'employee_id', 'tast_letter_id',
+        'position', 'description',
+    ];
 
     public function taskLetter()
     {

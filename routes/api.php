@@ -17,6 +17,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SampleMatrixController;
 use App\Http\Controllers\SampleTypeController;
 use App\Http\Controllers\SubkonController;
+use App\Http\Controllers\TaskLetterController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TestMethodController;
 // use App\Http\Controllers\UserController;
@@ -74,6 +75,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
     Route::apiResource('users', UserController::class);
+    Route::apiResource('task-letters', TaskLetterController::class);
 
     Route::get('offers/summary', [OfferController::class, 'summary']);
     Route::post('offers/{offer}/review', [OfferController::class, 'review']);

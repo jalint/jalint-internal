@@ -17,6 +17,7 @@ class TaskLetterController extends Controller
 
         $query = Offer::query()
             ->where('status', 'approved')
+            ->whereHas('invoice')
             ->with([
                 'customer:id,name',
                 'taskLetter:id,offer_id,task_letter_number',
@@ -43,19 +44,21 @@ class TaskLetterController extends Controller
         return response()->json($offers);
     }
 
-    public function store(Request $request, $offerId)
+    public function store(Request $request)
     {
         $request->validate([
+            'offer_id' => ['required', 'exists:offers,id'],
             'task_date' => ['required', 'date'],
             'note' => ['nullable', 'string'],
             'officers' => ['required', 'array', 'min:1'],
-            'officers.*.name' => ['required', 'string'],
+            'officers.*.id' => ['required', 'exists:employees,id'],
             'officers.*.position' => ['nullable', 'string'],
             'officers.*.description' => ['nullable', 'string'],
         ]);
 
-        return DB::transaction(function () use ($request, $offerId) {
-            $offer = Offer::lockForUpdate()->findOrFail($offerId);
+        return DB::transaction(function () use ($request) {
+            $offer = Offer::lockForUpdate()->whereIn('status', ['approved'])
+            ->whereHas('invoice')->findOrFail($request->offer_id);
 
             if ($offer->status !== 'approved') {
                 abort(400, 'Surat tugas hanya bisa dibuat untuk penawaran yang disetujui');
@@ -74,7 +77,11 @@ class TaskLetterController extends Controller
             ]);
 
             foreach ($request->officers as $officer) {
-                $taskLetter->officers()->create($officer);
+                $taskLetter->officers()->create([
+                    'employee_id' => $officer['id'],
+                    'position' => $officer['position'],
+                    'description' => $officer['description'],
+                ]);
             }
 
             return response()->json([
