@@ -122,4 +122,9 @@ class Offer extends Model
             ->where('type', 'subkon_letter')
             ->where('uploaded_by_role', 'customer');
     }
+
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
+    }
 }

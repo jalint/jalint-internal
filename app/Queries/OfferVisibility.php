@@ -53,11 +53,7 @@ class OfferVisibility
         return Offer::query()
             ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
             ->whereHas('currentReview.reviewStep', function ($q) {
-                $q->whereIn('code', [
-                    'manager_admin',
-                    'manager_teknis',
-                    'customer',
-                ]);
+                $q->whereNotIn('code', ['customer', 'admin_penawaran', 'admin_kuptdk']);
             });
     }
 
