@@ -150,6 +150,7 @@ class CustomerOfferController extends Controller
             'samples.parameters.subkon',
             'samples.parameters.testParameter.sampleType',
             'documents',
+            'invoice.payments',
         ])
         ->where('customer_id', $customerAccount->customer_id)
         ->findOrFail($id);

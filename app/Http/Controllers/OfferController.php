@@ -391,6 +391,7 @@ class OfferController extends Controller
             'samples.parameters.subkon',
             'samples.parameters.testParameter.sampleType',
             'documents',
+            'invoice.payments',
         ])->findOrFail($id);
 
         $currentReview = $offer->currentReview;

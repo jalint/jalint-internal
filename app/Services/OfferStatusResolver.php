@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Offer;
+use App\Models\ReviewStep;
 
 class OfferStatusResolver
 {
@@ -56,10 +57,10 @@ class OfferStatusResolver
                 $review->reviewStep->code === 'manager_admin'
                 && $review->decision === 'pending' => 'Menunggu Persetujuan MA',
 
-                $offer->hasApprovedBy('manager_admin')
+                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_admin')->value('id'))
                 && $review->reviewStep->code === 'manager_teknis' => 'Disetujui MA',
 
-                $offer->hasApprovedBy('manager_teknis')
+                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_teknis')->value('id'))
                 && $review->reviewStep->code === 'customer' => 'Disetujui MT',
 
                 default => 'Kaji Ulang',
@@ -87,7 +88,7 @@ class OfferStatusResolver
             'manager_teknis' => match (true) {
                 $review->reviewStep->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
 
-                $offer->hasApprovedBy('manager_teknis') => 'Disetujui MT',
+                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_teknis')->value('id')) => 'Disetujui MT',
 
                 default => 'Verifikasi Kaji Ulang',
             },

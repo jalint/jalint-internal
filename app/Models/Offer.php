@@ -93,10 +93,10 @@ class Offer extends Model
     }
 
     // di Offer model
-    public function hasApprovedBy(string $role): bool
+    public function hasApprovedBy($id): bool
     {
         return $this->reviews()
-            ->where('reviewer_role', $role)
+            ->where('review_step_id', $id)
             ->where('decision', 'approved')
             ->exists();
     }
