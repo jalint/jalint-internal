@@ -17,6 +17,10 @@ return new class extends Migration {
                 ->constrained('invoices')
                 ->cascadeOnDelete();
 
+            $table->foreignId('company_bank_account_id')
+                ->constrained('company_bank_accounts')
+                ->cascadeOnDelete();
+
             $table->date('payment_date');
             $table->decimal('amount', 15, 2);
 

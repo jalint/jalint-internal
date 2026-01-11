@@ -23,7 +23,7 @@ class UpdateSampleTypeRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'regulation_id' => ['required'],
+            'regulation' => ['required'],
         ];
     }
 }

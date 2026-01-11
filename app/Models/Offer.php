@@ -62,33 +62,64 @@ class Offer extends Model
      | CALCULATED ATTRIBUTES
      ======================= */
 
-    public function getSubtotalAmountAttribute()
-    {
-        return $this->samples
-            ->flatMap->parameters
-            ->sum(fn ($p) => $p->unit_price * $p->qty);
-    }
+    // public function getSubtotalAmountAttribute()
+    // {
+    //     return $this->samples
+    //         ->flatMap->parameters
+    //         ->sum(fn ($p) => $p->unit_price * $p->qty);
+    // }
 
-    public function getVatAmountAttribute()
-    {
-        return $this->subtotal_amount * ($this->vat_percent / 100);
-    }
+    // public function getVatAmountAttribute()
+    // {
+    //     return $this->subtotal_amount * ($this->vat_percent / 100);
+    // }
 
-    public function getWithholdingTaxAmountAttribute()
-    {
-        return $this->subtotal_amount * ($this->withholding_tax_percent / 100);
-    }
+    // public function getWithholdingTaxAmountAttribute()
+    // {
+    //     return $this->subtotal_amount * ($this->withholding_tax_percent / 100);
+    // }
 
-    public function getTotalAmountAttribute()
-    {
-        return $this->subtotal_amount
-            - $this->discount_amount
-            + $this->vat_amount
-            - $this->withholding_tax_amount;
-    }
+    // public function getTotalAmountAttribute()
+    // {
+    //     return $this->subtotal_amount
+    //         - $this->discount_amount
+    //         + $this->vat_amount
+    //         - $this->withholding_tax_amount;
+    // }
 
     public function taskLetter()
     {
         return $this->hasOne(TaskLetter::class);
+    }
+
+    // di Offer model
+    public function hasApprovedBy(string $role): bool
+    {
+        return $this->reviews()
+            ->where('reviewer_role', $role)
+            ->where('decision', 'approved')
+            ->exists();
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(OfferDocument::class);
+    }
+
+    /**
+     * Helper spesifik subkon.
+     */
+    public function subkonLetterFromAdmin()
+    {
+        return $this->documents()
+            ->where('type', 'subkon_letter')
+            ->where('uploaded_by_role', 'admin_kuptdk');
+    }
+
+    public function subkonLetterFromCustomer()
+    {
+        return $this->documents()
+            ->where('type', 'subkon_letter')
+            ->where('uploaded_by_role', 'customer');
     }
 }

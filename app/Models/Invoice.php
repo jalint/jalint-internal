@@ -12,4 +12,14 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceDetail::class);
     }
+
+    public function offer()
+    {
+        return $this->belongsTo(Offer::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(InvoicePayment::class);
+    }
 }

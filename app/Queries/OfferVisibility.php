@@ -17,31 +17,23 @@ class OfferVisibility
         };
     }
 
+    /**
+     * ADMIN PENAWARAN
+     * Semua penawaran adalah domain dia.
+     */
     private static function adminPenawaran()
     {
-        return Offer::query()
-            ->where(function ($q) {
-                $q->whereIn('status', [
-                    'draft',
-                    'in_review',
-                    'approved',
-                    'completed',
-                    'rejected',
-                ]);
-            });
+        return Offer::query();
     }
 
+    /**
+     * ADMIN KUPTDK
+     * Mulai dari kaji ulang teknis ke atas.
+     */
     private static function adminKuptdk()
     {
         return Offer::query()
-            ->where(function ($q) {
-                $q->whereIn('status', [
-                    'in_review',
-                    'approved',
-                    'completed',
-                    'rejected',
-                ]);
-            })
+            ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
             ->whereHas('currentReview.reviewStep', function ($q) {
                 $q->whereIn('code', [
                     'admin_kuptdk',
@@ -52,36 +44,31 @@ class OfferVisibility
             });
     }
 
+    /**
+     * MANAGER ADMIN
+     * HANYA yang menyentuh MA ke atas.
+     */
     private static function managerAdmin()
     {
         return Offer::query()
-            ->where(function ($q) {
-                $q->whereIn('status', [
-                    'in_review',
-                    'approved',
-                    'completed',
-                    'rejected',
-                ]);
-            })
+            ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
             ->whereHas('currentReview.reviewStep', function ($q) {
                 $q->whereIn('code', [
                     'manager_admin',
                     'manager_teknis',
+                    'customer',
                 ]);
             });
     }
 
+    /**
+     * MANAGER TEKNIS
+     * Fokus teknis & hasil akhir.
+     */
     private static function managerTeknis()
     {
         return Offer::query()
-            ->where(function ($q) {
-                $q->whereIn('status', [
-                    'in_review',
-                    'approved',
-                    'completed',
-                    'rejected',
-                ]);
-            })
+            ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
             ->whereHas('currentReview.reviewStep', function ($q) {
                 $q->whereIn('code', [
                     'manager_teknis',

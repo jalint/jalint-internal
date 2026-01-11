@@ -10,20 +10,23 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('invoice_details', function (Blueprint $table) {
+        Schema::create('offer_documents', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('invoice_id')
-                ->constrained('invoices')
+            $table->foreignId('offer_id')
+                ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('parameter_name');
+            $table->string('type');
+            // contoh: subkon_letter
 
-            $table->unsignedInteger('qty')->default(1);
-            $table->decimal('unit_price', 15, 2);
-            $table->decimal('total_price', 15, 2);
+            $table->string('uploaded_by_role');
+            // admin_kuptdk | customer
+
+            $table->string('file_path');
 
             $table->timestamps();
+
+            $table->index(['offer_id', 'type']);
         });
     }
 
@@ -32,6 +35,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('invoice_details');
+        Schema::dropIfExists('offer_documents');
     }
 };

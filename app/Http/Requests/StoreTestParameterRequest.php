@@ -22,7 +22,7 @@ class StoreTestParameterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => 'required|unique:test_parameters,code',
+            // 'code' => 'required|unique:test_parameters,code',
             'name' => 'required|unique:test_parameters,name',
             'unit' => 'required|string',
             'test_method_id' => 'required|exists:test_methods,id',

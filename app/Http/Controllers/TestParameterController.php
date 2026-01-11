@@ -81,7 +81,7 @@ class TestParameterController extends Controller
                 }
             })
             ->with([
-                'regulation',
+                // 'regulation',
                 'testParameters' => function ($query) use ($search) {
                     if ($search) {
                         $query->where('name', 'like', '%'.$search.'%');
@@ -96,18 +96,13 @@ class TestParameterController extends Controller
                 return [
                     'sample_type_id' => $sampleType->id,
                     'sample_type_name' => $sampleType->name,
-
-                    'regulation' => $sampleType->regulation ? [
-                        'id' => $sampleType->regulation->id,
-                        'name' => $sampleType->regulation->name,
-                        'code' => $sampleType->regulation->code ?? null,
-                    ] : null,
-
+                    'regulation' => $sampleType->name,
                     'parameters' => $sampleType->testParameters->map(function ($param) {
                         return [
                             'id' => $param->id,
                             'name' => $param->name,
                             'code' => $param->code,
+                            'status' => $param->status,
                             'unit' => $param->unit,
                             'price' => $param->price,
                         ];

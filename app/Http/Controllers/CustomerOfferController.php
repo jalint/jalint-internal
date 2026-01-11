@@ -148,7 +148,8 @@ class CustomerOfferController extends Controller
         $offer = Offer::with([
             'template',
             'samples.parameters.subkon',
-            'samples.parameters.testParameter.sampleType.regulation',
+            'samples.parameters.testParameter.sampleType',
+            'documents',
         ])
         ->where('customer_id', $customerAccount->customer_id)
         ->findOrFail($id);
@@ -168,10 +169,7 @@ class CustomerOfferController extends Controller
                         'sample_type' => [
                             'id' => $sampleType?->id,
                             'name' => $sampleType?->name,
-                            'regulation' => $sampleType && $sampleType->regulation ? [
-                                'id' => $sampleType->regulation->id,
-                                'name' => $sampleType->regulation->name,
-                            ] : null,
+                            'regulation' => $sampleType->regulation,
                         ],
 
                         'parameters' => $items->map(function ($param) {
@@ -216,6 +214,7 @@ class CustomerOfferController extends Controller
                 'total_amount' => $offer->total_amount,
                 'payable_amount' => $offer->payable_amount,
                 'template' => $offer->template,
+                'documents' => $offer->documents,
             ],
             'samples' => $samples,
         ]);
@@ -275,11 +274,9 @@ class CustomerOfferController extends Controller
                     'status' => 'approved',
                 ]);
 
-                app(InvoiceService::class)->createFromOffer($offer);
+                $data = app(InvoiceService::class)->createFromOffer($offer);
 
-                return response()->json([
-                    'message' => 'Penawaran disetujui, invoice telah dibuat',
-                ]);
+                return response()->json($data);
             }
 
             /*
@@ -291,13 +288,13 @@ class CustomerOfferController extends Controller
                 'status' => 'rejected',
             ]);
 
-            $adminPenawaranStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
+            // $adminPenawaranStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
 
-            OfferReview::create([
-                'offer_id' => $offer->id,
-                'review_step_id' => $adminPenawaranStep->id,
-                'decision' => 'pending',
-            ]);
+            // OfferReview::create([
+            //     'offer_id' => $offer->id,
+            //     'review_step_id' => $adminPenawaranStep->id,
+            //     'decision' => 'pending',
+            // ]);
 
             return response()->json([
                 'message' => 'Penawaran ditolak pelanggan dan dikembalikan ke Admin Penawaran',

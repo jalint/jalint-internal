@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminInvoiceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\CompanyBankAccountController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\CustomerOfferController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\OfferController;
+use App\Http\Controllers\OfferDocumentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RegulationController;
 use App\Http\Controllers\RoleController;
@@ -17,8 +19,8 @@ use App\Http\Controllers\SampleTypeController;
 use App\Http\Controllers\SubkonController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TestMethodController;
-use App\Http\Controllers\TestPackageController;
 // use App\Http\Controllers\UserController;
+use App\Http\Controllers\TestPackageController;
 use App\Http\Controllers\TestParameterController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -33,11 +35,18 @@ Route::post('/customer/login', [AuthController::class, 'loginCustomer']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
+        Route::post('customers/offers/{offer}/review', [CustomerOfferController::class, 'reviewCustomer']);
         Route::get('customers/offers/summary', [CustomerOfferController::class, 'summary']);
-        Route::get('customers/offers/review', [CustomerOfferController::class, 'reviewCustomer']);
+        Route::post('customers/invoces/payment', [AdminInvoiceController::class, 'storeCustomerPayment']);
+
         Route::apiResource(
             'customers/offers',
             CustomerOfferController::class
+        );
+
+        Route::post(
+            '/offers/{offer}/documents/subkon/customer',
+            [OfferDocumentController::class, 'uploadByCustomer']
         );
     });
 
@@ -70,4 +79,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('offers/{offer}/review', [OfferController::class, 'review']);
 
     Route::apiResource('offers', OfferController::class);
+
+    Route::post(
+        '/offers/{offer}/documents/subkon/admin',
+        [OfferDocumentController::class, 'uploadByAdmin']
+    )->middleware('role:admin_kuptdk');
 });

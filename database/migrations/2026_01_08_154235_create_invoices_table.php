@@ -17,11 +17,23 @@ return new class extends Migration {
                 ->constrained('offers')
                 ->cascadeOnDelete();
 
+            $table->foreignId('customer_id')
+                ->constrained('customers')
+                ->cascadeOnDelete();
+
             $table->string('invoice_number')->unique();
 
-            $table->decimal('subtotal', 15, 2);
-            $table->decimal('tax_amount', 15, 2)->default(0);
-            $table->decimal('total', 15, 2);
+            $table->decimal('subtotal_amount', 15, 2);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+
+            // SNAPSHOT PAJAK
+            $table->decimal('vat_percent', 5, 2);
+            $table->decimal('vat_amount', 15, 2);
+
+            $table->decimal('pph_percent', 5, 2);
+            $table->decimal('pph_amount', 15, 2);
+
+            $table->decimal('total_amount', 15, 2);
 
             $table->enum('status', [
                 'unpaid',     // belum ada pembayaran sah
@@ -31,6 +43,7 @@ return new class extends Migration {
             ])->default('unpaid');
 
             $table->date('issued_at');
+            $table->date('due_date');
             $table->timestamps();
 
             $table->index(['status']);

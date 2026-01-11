@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\Offer;
+use Illuminate\Support\Carbon;
 
 class InvoiceService
 {
@@ -17,22 +18,26 @@ class InvoiceService
             'offer_id' => $offer->id,
             'invoice_number' => $this->generateInvoiceNumber(),
             'customer_id' => $offer->customer_id,
-            'issue_date' => now(),
+            'issued_at' => now(),
             'due_date' => now()->addDays(14),
             'status' => 'unpaid',
-            'subtotal' => $offer->total_amount,
-            'total' => $offer->payable_amount,
+            'subtotal_amount' => $offer->subtotal_amount,
+            'total_amount' => $offer->total_amount,
+            'discount_amount' => $offer->discount_amount,
+            'vat_amount' => $offer->vat_amount,
+            'vat_percent' => $offer->vat_percent,
+            'pph_amount' => $offer->pph_amount,
+            'pph_percent' => $offer->pph_percent,
         ]);
 
         foreach ($offer->samples as $sample) {
             foreach ($sample->parameters as $param) {
                 $invoice->details()->create([
-                    'sample_title' => $sample->title,
-                    'test_parameter_id' => $param->test_parameter_id,
+                    // 'test_parameter_id' => $param->test_parameter_id,
                     'parameter_name' => $param->testParameter->name,
-                    'unit_price' => $param->unit_price,
+                    'unit_price' => $param->price,
                     'qty' => $param->qty,
-                    'subtotal' => $param->unit_price * $param->qty,
+                    'total_price' => $param->price * $param->qty,
                 ]);
             }
         }

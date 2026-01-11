@@ -12,7 +12,7 @@ return new class extends Migration {
 
             // Core identity
             $table->string('name')->unique();
-            $table->string('code')->unique();
+            // $table->string('code')->unique();
             $table->string('unit')->nullable(); // e.g. mg/L, %, °C
             $table->foreignId('sample_type_id')
              ->constrained('sample_types')->restrictOnDelete();

@@ -13,7 +13,8 @@ return new class extends Migration {
         Schema::create('sample_types', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->foreignId('regulation_id')->constrained()->restrictOnDelete();
+            $table->text('regulation');
+            // $table->foreignId('regulation_id')->constrained()->restrictOnDelete();
             $table->timestamps();
         });
     }
