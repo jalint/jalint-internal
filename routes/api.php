@@ -75,12 +75,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
     Route::apiResource('users', UserController::class);
+    Route::get('task-letters/summary', [TaskLetterController::class, 'summary']);
     Route::apiResource('task-letters', TaskLetterController::class);
 
     Route::get('offers/summary', [OfferController::class, 'summary']);
     Route::post('offers/{offer}/review', [OfferController::class, 'review']);
 
     Route::apiResource('offers', OfferController::class);
+    Route::post('admin/payments/{payment}/review', [AdminInvoiceController::class, 'reviewPayment']);
 
     Route::post(
         '/offers/{offer}/documents/subkon/admin',

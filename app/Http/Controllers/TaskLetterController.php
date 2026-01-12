@@ -10,36 +10,143 @@ use Illuminate\Support\Facades\DB;
 
 class TaskLetterController extends Controller
 {
+    public function summary()
+    {
+        // $role = auth()->user()->roles->first()->name;
+
+        $base = Offer::query()
+            ->whereHas('invoice')
+            ->whereBetween('created_at', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ]);
+
+        $summary['all'] = (clone $base)->count();
+
+        if (auth()->user()->hasRole('penyelia')) {
+            $summary['menunggu_surat_tugas'] = (clone $base)
+                ->whereDoesntHave('taskLetter')
+                ->count();
+
+            $summary['surgas_dikirim'] = (clone $base)
+                ->whereHas('taskLetter')
+                ->count();
+        }
+
+        if (auth()->user()->hasRole('ppcu')) {
+            $summary['konfirmasi_surat_tugas'] = (clone $base)
+                ->whereHas('taskLetter', fn ($q) => $q->where('status', 'pending')
+                )
+                ->count();
+
+            $summary['surgas_dilaksankan'] = (clone $base)
+                ->whereHas('taskLetter', fn ($q) => $q->where('status', 'confirmed')
+                )
+                ->count();
+        }
+
+        return response()->json($summary);
+    }
+
     public function index(Request $request)
     {
-        $filter = $request->query('filter');
-        // all | no_task_letter | has_task_letter
+        $role = auth()->user()->roles->first()->name;
+
+        $filter = $request->query('filter', 'all');
+        $search = $request->query('search');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
         $query = Offer::query()
-            ->where('status', 'approved')
             ->whereHas('invoice')
             ->with([
                 'customer:id,name',
-                'taskLetter:id,offer_id,task_letter_number',
-            ])
-            ->latest();
+                'invoice:id,offer_id,invoice_number',
+                'taskLetter',
+            ]);
 
-        switch ($filter) {
-            case 'no_task_letter':
-                $query->whereDoesntHave('taskLetter');
+        /*
+         * =========================
+         * DEFAULT: BULAN BERJALAN
+         * =========================
+         */
+        if (!$startDate && !$endDate) {
+            $query->whereBetween('created_at', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ]);
+        }
+
+        /*
+         * =========================
+         * FILTER TANGGAL
+         * =========================
+         */
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        /*
+         * =========================
+         * FILTER ROLE + STATUS
+         * =========================
+         */
+        switch ($role) {
+            case 'penyelia':
+                match ($filter) {
+                    'waiting_task_letter' => $query->whereDoesntHave('taskLetter'),
+                    'task_letter_sent' => $query->whereHas('taskLetter'),
+                    default => null,
+                };
                 break;
 
-            case 'has_task_letter':
-                $query->whereHas('taskLetter');
-                break;
-
-            case 'all':
-            default:
-                // tidak perlu apa-apa
+            case 'ppcu':
+                match ($filter) {
+                    'confirm_task_letter' => $query->whereHas(
+                        'taskLetter',
+                        fn ($q) => $q->where('status', 'pending')
+                    ),
+                    'task_executed' => $query->whereHas(
+                        'taskLetter',
+                        fn ($q) => $q->where('status', 'confirmed')
+                    ),
+                    default => null,
+                };
                 break;
         }
 
-        $offers = $query->paginate(15);
+        /*
+         * =========================
+         * SEARCH
+         * =========================
+         */
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('offer_number', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")
+                  );
+            });
+        }
+
+        $offers = $query
+            ->orderByDesc('created_at')
+            ->paginate($request->per_page ?? 15);
+
+        /*
+         * =========================
+         * DISPLAY STATUS
+         * =========================
+         */
+        $offers->getCollection()->transform(function ($offer) use ($role) {
+            $offer->display_status = $this->resolveTaskLetterStatus($offer, $role);
+
+            return $offer;
+        });
 
         return response()->json($offers);
     }
@@ -73,6 +180,7 @@ class TaskLetterController extends Controller
                 'task_letter_number' => $this->generateTaskLetterNumber(),
                 'task_date' => $request->task_date,
                 'note' => $request->note,
+                'status' => 'pending',
                 'created_by' => auth()->id(),
             ]);
 
@@ -88,6 +196,21 @@ class TaskLetterController extends Controller
                 'message' => 'Surat tugas berhasil dibuat',
             ]);
         });
+    }
+
+    public function show($offerId)
+    {
+        $offer = Offer::query()
+            ->where('id', $offerId)
+            ->whereHas('invoice')
+            ->with([
+                'customer:id,name',
+                'invoice:id,offer_id,invoice_number',
+                'taskLetter',
+            ])
+            ->firstOrFail();
+
+        return response()->json($offer);
     }
 
     public function update(Request $request, $offerId)
@@ -177,5 +300,26 @@ class TaskLetterController extends Controller
         ];
 
         return $map[$month];
+    }
+
+    private function resolveTaskLetterStatus(Offer $offer, string $role): string
+    {
+        if (!$offer->invoice) {
+            return '-';
+        }
+
+        if (!$offer->taskLetter) {
+            return 'Menunggu Surat Tugas';
+        }
+
+        if ($role === 'ppcu') {
+            return match ($offer->taskLetter->status) {
+                'pending' => 'Konfirmasi Surat Tugas',
+                'confirmed' => 'Tugas Dilaksanakan',
+                default => 'Surat Tugas',
+            };
+        }
+
+        return 'Surgas Dikirim';
     }
 }

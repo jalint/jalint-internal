@@ -145,9 +145,9 @@ class AdminInvoiceController extends Controller
 
             $payment->update([
                 'status' => $validated['decision'],
-                'note' => $validated['note'],
-                'reviewed_by' => auth()->id(),
-                'reviewed_at' => now(),
+                // 'note' => $validated['note'],
+                'validated_by' => auth()->id(),
+                'validated_at' => now(),
             ]);
 
             if ($validated['decision'] === 'approved') {
