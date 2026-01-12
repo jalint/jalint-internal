@@ -13,26 +13,82 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerOfferController extends Controller
 {
-    public function summary()
+    public function summary(Request $request)
     {
         $customerId = auth('customer')->user()->customer_id;
 
-        $counts = Offer::where('customer_id', $customerId)
-            ->selectRaw("
-            COUNT(*) as total,
-            SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
-            SUM(CASE WHEN status = 'in_review' THEN 1 ELSE 0 END) as waiting,
-            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
-            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-        ")
-            ->first();
+        $base = Offer::query()
+            ->where('customer_id', $customerId);
+
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
+            $base->whereBetween('offer_date', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ]);
+        }
+
+        // =========================
+        // FILTER TANGGAL MANUAL
+        // =========================
+        if ($request->filled('start_date')) {
+            $base->whereDate(
+                'offer_date',
+                '>=',
+                Carbon::createFromFormat('Y-m-d', $request->start_date)
+            );
+        }
+
+        if ($request->filled('end_date')) {
+            $base->whereDate(
+                'offer_date',
+                '<=',
+                Carbon::createFromFormat('Y-m-d', $request->end_date)
+            );
+        }
 
         return response()->json([
-            'all' => (int) $counts->total,
-            'draft' => (int) $counts->draft,
-            'waiting' => (int) $counts->waiting,
-            'approved' => (int) $counts->approved,
-            'rejected' => (int) $counts->rejected,
+            'all' => (clone $base)->count(),
+
+            'draft' => (clone $base)
+                ->where('status', 'draft')
+                ->count(),
+
+            'penawaran_diproses' => (clone $base)
+                ->where('status', 'in_review')
+                ->count(),
+
+            'verifikasi_penawaran_final' => (clone $base)
+                ->where('status', 'in_review')
+                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                      ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'customer'))
+                )
+                ->count(),
+
+            'proses_pembayaran_dp' => (clone $base)
+                ->where('status', 'approved')
+                ->whereDoesntHave('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                )
+                ->count(),
+
+            'verifikasi_pembayaran' => (clone $base)
+                ->where('status', 'approved')
+                ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                )
+                ->count(),
+
+            'proses_pengujian' => (clone $base)
+                ->where('status', 'approved')
+                ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                )
+                ->count(),
+
+            'selesai' => (clone $base)
+                ->where('status', 'completed')
+                ->count(),
+
+            'direvisi' => (clone $base)
+                ->where('status', 'rejected')
+                ->count(),
         ]);
     }
 
@@ -40,20 +96,91 @@ class CustomerOfferController extends Controller
     {
         $customerId = auth('customer')->user()->customer_id;
 
-        $query = Offer::query()->select(['id', 'offer_number', 'title', 'offer_date', 'expired_date', 'status', 'customer_id'])
-            ->where('customer_id', $customerId);
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
 
+        // =========================
+        // BASE QUERY
+        // =========================
+        $query = Offer::query()
+            ->where('customer_id', $customerId)
+            ->with([
+                'currentReview.reviewStep',
+                'invoice.payments',
+                'customer:id,name',
+            ])
+            ->orderByDesc('created_at');
+
+        // =========================
+        // DEFAULT BULAN BERJALAN
+        // =========================
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
+            $query->whereBetween('offer_date', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ]);
+        }
+
+        // =========================
+        // FILTER TANGGAL MANUAL
+        // =========================
+        if ($request->filled('start_date')) {
+            $query->whereDate(
+                'offer_date',
+                '>=',
+                Carbon::createFromFormat('Y-m-d', $request->start_date)
+            );
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate(
+                'offer_date',
+                '<=',
+                Carbon::createFromFormat('Y-m-d', $request->end_date)
+            );
+        }
+
+        // =========================
+        // FILTER STATUS
+        // =========================
         switch ($request->filter) {
             case 'draft':
                 $query->where('status', 'draft');
                 break;
 
-            case 'waiting': // menunggu review admin
+            case 'in_review':
                 $query->where('status', 'in_review');
                 break;
 
-            case 'approved':
-                $query->where('status', 'approved');
+            case 'verifikasi_final':
+                $query->where('status', 'in_review')
+                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'customer'))
+                    );
+                break;
+
+            case 'dp_payment':
+                $query->where('status', 'approved')
+                    ->whereDoesntHave('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                    );
+                break;
+
+            case 'verifikasi_payment':
+                $query->where('status', 'approved')
+                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                    );
+                break;
+
+            case 'testing':
+                $query->where('status', 'approved')
+                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                    );
+                break;
+
+            case 'completed':
+                $query->where('status', 'completed');
                 break;
 
             case 'rejected':
@@ -62,23 +189,54 @@ class CustomerOfferController extends Controller
 
             case 'all':
             default:
-                // tidak perlu apa-apa
+                // tidak perlu filter tambahan
                 break;
         }
 
+        // =========================
+        // SEARCH
+        // =========================
         if ($search = $request->search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('offer_number', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->where('offer_number', 'like', "%{$search}%")
                   ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhereDate('offer_date', $search)
-                  ->orWhereDate('expired_date', $search)
-                  ->orWhere('status', 'like', "%{$search}%");
-            });
+            );
         }
 
-        $offers = $query->with('customer:id,name')
-            ->orderByDesc('created_at')
-            ->paginate($request->per_page ? $request->per_page : 15);
+        // =========================
+        // PAGINATION
+        // =========================
+        $offers = $query->paginate($request->per_page ?? 15);
+
+        // =========================
+        // DISPLAY STATUS
+        // =========================
+        $offers->getCollection()->transform(function ($offer) {
+            $offer->display_status = match (true) {
+                $offer->status === 'draft' => 'Draft',
+
+                $offer->status === 'in_review'
+                    && optional($offer->currentReview?->reviewStep)->code === 'customer' => 'Verifikasi Penawaran Final',
+
+                $offer->status === 'in_review' => 'Penawaran Diproses',
+
+                $offer->status === 'approved'
+                    && !$offer->invoice?->payments->where('status', 'pending')->count() => 'Proses Pembayaran DP',
+
+                $offer->status === 'approved'
+                    && $offer->invoice?->payments->where('status', 'pending')->count() => 'Verifikasi Pembayaran',
+
+                $offer->status === 'approved'
+                    && $offer->invoice?->payments->where('status', 'approved')->count() => 'Proses Pengujian',
+
+                $offer->status === 'completed' => 'Completed',
+
+                $offer->status === 'rejected' => 'Direvisi',
+
+                default => ucfirst($offer->status),
+            };
+
+            return $offer;
+        });
 
         return response()->json($offers);
     }
@@ -216,6 +374,7 @@ class CustomerOfferController extends Controller
                 'payable_amount' => $offer->payable_amount,
                 'template' => $offer->template,
                 'documents' => $offer->documents,
+                'invoice' => $offer->invoice,
             ],
             'samples' => $samples,
         ]);

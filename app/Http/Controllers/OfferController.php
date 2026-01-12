@@ -18,12 +18,38 @@ use Illuminate\Support\Facades\Log;
 
 class OfferController extends Controller
 {
-    public function summary()
+    public function summary(Request $request)
     {
         $role = auth()->user()->roles->first()->name;
 
         $base = OfferVisibility::forRole($role)
             ->with('currentReview.reviewStep');
+
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
+            $base->whereBetween('offer_date', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ]);
+        }
+
+        // =========================
+        // FILTER TANGGAL MANUAL
+        // =========================
+        if ($request->filled('start_date')) {
+            $base->whereDate(
+                'offer_date',
+                '>=',
+                Carbon::createFromFormat('Y-m-d', $request->start_date)
+            );
+        }
+
+        if ($request->filled('end_date')) {
+            $base->whereDate(
+                'offer_date',
+                '<=',
+                Carbon::createFromFormat('Y-m-d', $request->end_date)
+            );
+        }
 
         $summary = [];
 
