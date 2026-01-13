@@ -267,6 +267,20 @@ class TaskLetterController extends Controller
         });
     }
 
+    public function review($id)
+    {
+        $task = TaskLetter::findOrFail($id);
+
+        if ($task->status !== 'pending') {
+            abort(400, 'Surat tugas tidak dalam status pending atau sudah dikonfirmasi');
+        }
+
+        $task->status = 'confirmed';
+        $task->save();
+
+        return response()->json(['message' => 'Surat Tugas Dikofirmasi']);
+    }
+
     protected function generateTaskLetterNumber(): string
     {
         $count = TaskLetter::whereYear('created_at', now()->year)->count() + 1;

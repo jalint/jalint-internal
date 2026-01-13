@@ -20,11 +20,19 @@ class OfferStatusResolver
             return 'Completed';
         }
 
-        if ($offer->status === 'approved') {
-            return 'Disetujui';
+        if ($offer->status == 'approved') {
+            if ($role == 'admin_penawaran') {
+                if (!$offer->invoice()->exists()) {
+                    return 'Disetujui';
+                }
+            }
+
+            if ($role !== 'admin_penawaran') {
+                return 'Disetujui';
+            }
         }
 
-        if (!$review) {
+        if ($offer->status == 'draft') {
             return 'Draft';
         }
 
@@ -42,6 +50,14 @@ class OfferStatusResolver
 
                 $offer->status === 'in_review'
                 && $review->reviewStep->code !== 'admin_penawaran' => 'Proses Kaji Ulang',
+
+                $offer->status === 'approved'
+                && $offer->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                )->exists() => 'Cek Pembayaran Pelanggan',
+
+                $offer->status === 'approved'
+                && $offer->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                )->exists() => 'Proses Pengujian',
 
                 default => 'Proses Kaji Ulang',
             },

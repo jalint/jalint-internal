@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
     Route::apiResource('users', UserController::class);
+    Route::post('task-letters/{id}/review', [TaskLetterController::class, 'review']);
     Route::get('task-letters/summary', [TaskLetterController::class, 'summary']);
     Route::apiResource('task-letters', TaskLetterController::class);
 

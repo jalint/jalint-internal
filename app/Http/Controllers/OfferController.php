@@ -75,6 +75,17 @@ class OfferController extends Controller
                     )
                     ->count();
 
+                $summary['cek_pembayaran_pelanggan'] = (clone $base)->where('status', 'approved')
+                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                    )
+                    ->count();
+
+                $summary['proses_pengujian'] = (clone $base)
+                    ->where('status', 'approved')
+                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                    )
+                    ->count();
+
                 $summary['verif_pelanggan'] = (clone $base)
                     ->where('created_by_type', 'customer')
                     ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
@@ -85,6 +96,7 @@ class OfferController extends Controller
 
                 $summary['approved'] = (clone $base)
                     ->where('status', 'approved')
+                    ->doesntHave('invoice')
                     ->count();
 
                 $summary['completed'] = (clone $base)
@@ -247,6 +259,11 @@ class OfferController extends Controller
                         ->where('status', 'in_review')
                         ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', '!=', 'admin_penawaran')
                         ),
+
+                    'cek_pembayaran_pelanggan' => $query->where('status', 'approved')->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                    ),
+
+                    'proses_pengujian' => $query->where('status', 'approved')->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')),
 
                     default => null,
                 };

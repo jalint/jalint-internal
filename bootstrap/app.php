@@ -7,7 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Spatie\Permission\Exceptions\UnauthorizedException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -23,71 +23,73 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->renderable(function (AuthenticationException $e) {
-            $req = request(); // ambil request dari helper global
-
-            if ($req->expectsJson() || $req->is('api/*')) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
-            }
-
-            return redirect('/');
-        });
-
-        $exceptions->render(function (HttpExceptionInterface $e, $request) {
+        /*
+        |--------------------------------------------------------------------------
+        | Authentication
+        |--------------------------------------------------------------------------
+        */
+        $exceptions->renderable(function (AuthenticationException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                // Tentukan level log
-                $status = $e->getStatusCode();
-
-                if ($status >= 500) {
-                    Log::error('HTTP Exception', [
-                        'status' => $status,
-                        'message' => $e->getMessage(),
-                        'url' => $request->fullUrl(),
-                        'method' => $request->method(),
-                        'ip' => $request->ip(),
-                    ]);
-                } else {
-                    Log::info('HTTP Exception', [
-                        'status' => $status,
-                        'message' => $e->getMessage(),
-                        'url' => $request->fullUrl(),
-                    ]);
-                }
-
                 return response()->json([
-                    'message' => $e->getMessage() ?: 'Bad Request',
-                ], $e->getStatusCode());
+                    'message' => 'Unauthenticated.',
+                ], 401);
             }
         });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Authorization (Spatie)
+        |--------------------------------------------------------------------------
+        */
         $exceptions->renderable(function (UnauthorizedException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'message' => 'You do not have permission to access this resource.',
-                    'error' => 'FORBIDDEN',
                 ], 403);
             }
         });
 
-        // Handle ModelNotFoundException
-        $exceptions->render(function (NotFoundHttpException $e, $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
-                // Extract model name
-
-                // Extract ID dari message
-                preg_match('/\[.*\]\s+(.+)/', $e->getMessage(), $matches);
-                $id = $matches[1] ?? 'unknown';
-
+        /*
+        |--------------------------------------------------------------------------
+        | Model not found (findOrFail)
+        |--------------------------------------------------------------------------
+        */
+        $exceptions->render(function (ModelNotFoundException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'Not Found',
+                    'message' => 'Resource not found',
                 ], 404);
             }
         });
 
-        $exceptions->render(function (QueryException $e, $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
-                // MySQL foreign key constraint violation
+        $exceptions->render(function (NotFoundHttpException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Resource not found',
+                ], 404);
+            }
+        });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Route not found
+        |--------------------------------------------------------------------------
+        */
+        $exceptions->render(function (NotFoundHttpException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Endpoint not found',
+                ], 404);
+            }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Database errors
+        |--------------------------------------------------------------------------
+        */
+        $exceptions->render(function (QueryException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 Log::error('Database error', [
                     'code' => $e->getCode(),
                     'sql' => $e->getSql(),
@@ -101,8 +103,36 @@ return Application::configure(basePath: dirname(__DIR__))
                 ) {
                     return response()->json([
                         'message' => 'Data tidak dapat dihapus karena masih digunakan oleh data lain.',
-                    ], 409); // 409 Conflict
+                    ], 409);
                 }
+
+                return response()->json([
+                    'message' => 'Database error',
+                ], 500);
             }
         });
-    })->create();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Other HTTP exceptions (exclude 404)
+        |--------------------------------------------------------------------------
+        */
+        $exceptions->render(function (HttpException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                if ($e->getStatusCode() === 404) {
+                    return null; // biarkan handler 404 di atas
+                }
+
+                Log::warning('HTTP exception', [
+                    'status' => $e->getStatusCode(),
+                    'message' => $e->getMessage(),
+                    'url' => $request->fullUrl(),
+                ]);
+
+                return response()->json([
+                    'message' => $e->getMessage() ?: 'Request error',
+                ], $e->getStatusCode());
+            }
+        });
+    })
+    ->create();
