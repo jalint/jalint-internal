@@ -205,8 +205,9 @@ class TaskLetterController extends Controller
             ->whereHas('invoice')
             ->with([
                 'customer:id,name',
+                'samples.parameters.testParameter.sampleType',
                 'invoice:id,offer_id,invoice_number',
-                'taskLetter',
+                'taskLetter.officers',
             ])
             ->firstOrFail();
 
