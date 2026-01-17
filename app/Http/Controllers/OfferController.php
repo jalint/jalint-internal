@@ -9,6 +9,7 @@ use App\Models\OfferReview;
 use App\Models\OfferSampleParameter;
 use App\Models\ReviewStep;
 use App\Models\User;
+use App\Queries\OfferVisibility;
 use App\Services\OfferStatusResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,7 @@ class OfferController extends Controller
     {
         $role = auth()->user()->roles->first()->name;
 
-        $base = Offer::query()
+        $base = OfferVisibility::forRole($role)
             ->with('currentReview.reviewStep');
 
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
@@ -255,7 +256,7 @@ class OfferController extends Controller
         $role = auth()->user()->roles->first()->name;
         $filter = $request->query('filter', 'all');
 
-        $query = Offer::query()
+        $query = OfferVisibility::forRole($role)
             ->with([
                 'customer:id,name',
                 'currentReview.reviewStep',

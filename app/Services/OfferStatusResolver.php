@@ -110,9 +110,9 @@ class OfferStatusResolver
              * =========================
              */
             'manager_teknis' => match (true) {
-                $review->reviewStep->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
+                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
 
-                $offer->hasApprovedBy(
+                $offer->status === 'in_review' && $offer->hasApprovedBy(
                     ReviewStep::query()->where('code', 'manager_teknis')->value('id')
                 ) => 'Disetujui MT',
 
