@@ -29,7 +29,7 @@ class TestParameterController extends Controller
             });
         }
 
-        $testParameters = $query->with('testMethod:id,name', 'sampleType.regulation')->orderBy('created_at', 'desc')->paginate($perPage);
+        $testParameters = $query->with('testMethod:id,name', 'sampleType')->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($testParameters);
     }
