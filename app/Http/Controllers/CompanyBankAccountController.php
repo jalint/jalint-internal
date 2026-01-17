@@ -34,7 +34,8 @@ class CompanyBankAccountController extends Controller
 
     public function store(StoreCompanyBankAccountRequest $request)
     {
-        $account = CompanyBankAccount::create($request->validated());
+        $request->merge(['created_by' => auth()->user()->name]);
+        $account = CompanyBankAccount::create($request->all());
 
         return response()->json($account, 201);
     }
@@ -48,9 +49,10 @@ class CompanyBankAccountController extends Controller
 
     public function update(UpdateCompanyBankAccountRequest $request, $id)
     {
+        $request->merge(['updated_by' => auth()->user()->name]);
         $account = CompanyBankAccount::findOrFail($id);
 
-        $account->update($request->validated());
+        $account->update($request->all());
 
         return response()->json($account);
     }
