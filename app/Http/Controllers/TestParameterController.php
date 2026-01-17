@@ -29,7 +29,7 @@ class TestParameterController extends Controller
             });
         }
 
-        $testParameters = $query->with('testMethod:id,name', 'sampleType')->orderBy('created_at', 'desc')->paginate($perPage);
+        $testParameters = $query->with(['testMethod:id,name', 'sampleType'])->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json($testParameters);
     }
@@ -49,7 +49,7 @@ class TestParameterController extends Controller
      */
     public function show(TestParameter $testParameter)
     {
-        return response()->json($testParameter->load('testMethod:id,name'));
+        return response()->json($testParameter->load(['testMethod:id,name', 'sampleType']));
     }
 
     /**
