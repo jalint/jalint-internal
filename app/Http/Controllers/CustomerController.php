@@ -16,20 +16,34 @@ class CustomerController extends Controller
 {
     public function index(): JsonResponse
     {
-        $perPage = (int) request()->input('per_page', 15);
-        $perPage = min(max($perPage, 1), 100);
-
-        $search = request()->input('search');
+        $perPage = min(max((int) request('per_page', 15), 1), 100);
 
         $query = Customer::query();
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            });
-        }
+        // search by customer name
+        $query->when(request('search'), function ($q, $search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
 
-        $customers = $query->with('customerType:id,name', 'customerContact')->orderBy('created_at', 'desc')->paginate($perPage);
+        // filter by province
+        $query->when(request('province'), function ($q, $province) {
+            $q->where('province', 'like', "%{$province}%");
+        });
+
+        // filter by customer type (relation)
+        $query->when(request('customer_type'), function ($q, $type) {
+            $q->whereHas('customerType', function ($qt) use ($type) {
+                $qt->where('name', $type);
+            });
+        });
+
+        $customers = $query
+            ->with([
+                'customerType:id,name',
+                'customerContact',
+            ])
+            ->latest()
+            ->paginate($perPage);
 
         return response()->json($customers);
     }

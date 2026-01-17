@@ -26,7 +26,6 @@ use App\Http\Controllers\TestPackageController;
 use App\Http\Controllers\TestParameterController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WilayahController;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -95,13 +94,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/provinces', [WilayahController::class, 'index']);
     Route::get('/cities/{id}', [WilayahController::class, 'getCity']);
-});
-
-Route::get('/cetak', function () {
-    $pdf = Pdf::loadView('pdf.surat-tugas')
-    ->setPaper('a4', 'portrait');
-
-    return $pdf->stream('surat-tugas.pdf');
 });
 
 Route::get('/print', [JalintPdfController::class, 'suratTugas']);

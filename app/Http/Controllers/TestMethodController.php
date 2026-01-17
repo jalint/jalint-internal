@@ -45,6 +45,8 @@ class TestMethodController extends Controller
                 ->store('test_methods', 'public');
         }
 
+        $data['created_by'] = auth()->user()->name;
+
         $testMethod = TestMethod::create($data);
 
         return response()->json($testMethod, 201);
@@ -77,6 +79,8 @@ class TestMethodController extends Controller
             // cegah file lama ketimpa null
             unset($data['file']);
         }
+
+        $data['updated_by'] = auth()->user()->name;
 
         $testMethod->update($data);
 

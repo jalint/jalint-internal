@@ -39,7 +39,8 @@ class TemplateController extends Controller
      */
     public function store(StoreTemplateRequest $request)
     {
-        $template = Template::create($request->validated());
+        $request->merge(['created_by' => auth()->user()->name]);
+        $template = Template::create($request->all());
 
         return response()->json($template, 201);
     }
@@ -57,7 +58,8 @@ class TemplateController extends Controller
      */
     public function update(UpdateTemplateRequest $request, Template $template)
     {
-        $template->update($request->validated());
+        $request->merge(['updated_by' => auth()->user()->name]);
+        $template->update($request->all());
 
         return response()->json($template->fresh());
     }

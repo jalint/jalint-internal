@@ -33,12 +33,14 @@ class UpdateCustomerRequest extends FormRequest
             'postal_code' => 'required',
             'status' => 'required',
             'address' => 'required',
-
             'pic_name' => 'required|string',
             'pic_email' => 'nullable',
             'pic_phone' => 'nullable',
             'pic_position' => 'required',
             'pic_npwp' => 'nullable',
+            'vat_percent' => 'nullable',
+            'pph_percent' => 'nullable',
+            'discount_amount' => 'nullable',
         ];
     }
 }

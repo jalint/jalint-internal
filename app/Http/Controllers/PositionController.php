@@ -37,7 +37,8 @@ class PositionController extends Controller
      */
     public function store(StorePositionRequest $request)
     {
-        $position = Position::create($request->validated());
+        $request->merge(['created_by' => auth()->user()->name]);
+        $position = Position::create($request->all());
 
         return response()->json($position, 201);
     }
@@ -55,7 +56,8 @@ class PositionController extends Controller
      */
     public function update(UpdatePositionRequest $request, Position $position)
     {
-        $position->update($request->validated());
+        $request->merge(['updated_by' => auth()->user()->name]);
+        $position->update($request->all());
 
         return response()->json($position->fresh());
     }

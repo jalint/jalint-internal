@@ -54,9 +54,9 @@ class EmployeeController extends Controller
             //     $request->validated(),
             //     ['user_id' => $user->id]
             // );
-
+            $request->merge(['created_by' => auth()->user()->name]);
             // 3. Buat employee
-            $employee = Employee::create($request->validated());
+            $employee = Employee::create($request->all());
 
             // 4. Attach certifications
             if ($request->filled('certifications')) {
@@ -82,9 +82,11 @@ class EmployeeController extends Controller
      */
     public function update(UpdateEmployeeRequest $request, Employee $employee)
     {
+        $request->merge(['updated_by' => auth()->user()->name]);
+
         DB::transaction(function () use ($request, $employee) {
             // 1. Update employee
-            $employee->update($request->validated());
+            $employee->update($request->all());
 
             // 2. Update user (jika ada)
             // if ($employee->user) {
@@ -137,5 +139,9 @@ class EmployeeController extends Controller
             'message' => 'Photo uploaded successfully',
             'photo_url' => asset('storage/'.$employee->photo_path),
         ]);
+    }
+
+    public function linkedAccount()
+    {
     }
 }

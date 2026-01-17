@@ -33,7 +33,8 @@ class CustomerTypeController extends Controller
 
     public function store(StoreCustomerTypeRequest $request): JsonResponse
     {
-        $type = CustomerType::create($request->validated());
+        $request->merge(['created_by' => auth()->user()->name]);
+        $type = CustomerType::create($request->all());
 
         return response()->json($type, 201);
     }
@@ -45,7 +46,8 @@ class CustomerTypeController extends Controller
 
     public function update(UpdateCustomerTypeRequest $request, CustomerType $type): JsonResponse
     {
-        $type->update($request->validated());
+        $request->merge(['updated_by' => auth()->user()->name]);
+        $type->update($request->all());
 
         return response()->json($type->fresh());
     }

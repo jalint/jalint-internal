@@ -36,6 +36,7 @@ class CertificationController extends Controller
             $certification = Certification::create([
                 'name' => $request->name,
                 'description' => $request->description,
+                'created_by' => auth()->user()->name,
             ]);
 
             // attach parameter ke pivot
@@ -53,6 +54,7 @@ class CertificationController extends Controller
             $certification->update([
                 'name' => $request->name,
                 'description' => $request->description,
+                'updated_by' => auth()->user()->name,
             ]);
 
             // sync = update pivot tanpa duplikasi

@@ -39,7 +39,9 @@ class TestParameterController extends Controller
      */
     public function store(StoreTestParameterRequest $request)
     {
-        $testMethod = TestParameter::create($request->validated());
+        $request->merge(['created_by' => auth()->user()->name]);
+
+        $testMethod = TestParameter::create($request->all());
 
         return response()->json($testMethod, 201);
     }
@@ -57,7 +59,9 @@ class TestParameterController extends Controller
      */
     public function update(UpdateTestParameterRequest $request, TestParameter $testParameter): JsonResponse
     {
-        $testParameter->update($request->validated());
+        $request->merge(['updated_by' => auth()->user()->name]);
+
+        $testParameter->update($request->all());
 
         return response()->json($testParameter->fresh());
     }

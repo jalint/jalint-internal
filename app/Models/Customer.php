@@ -18,6 +18,9 @@ class Customer extends Model
         'status',
         'address',
         'customer_account_id',
+        'vat_percent',
+        'pph_percent',
+        'discount_amount',
     ];
 
     public function customerType()
