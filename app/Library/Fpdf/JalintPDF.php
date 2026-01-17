@@ -29,6 +29,7 @@ class JalintPDF extends \FPDF
         $this->Image(public_path('assets/images/jalint_icon.png'), 25, $baseline - 20, 18, 18);
 
         // 3. Multi Cell Tengah (3 Baris) - Tinggi teks total misal 12mm
+        $this->Image(public_path('assets/images/jalint.png'), 50, $baseline - 20, 38, 18);
 
         // 5, 6, 7. Tiga Logo Berjejer - Tinggi rata-rata 10mm
         $this->Image(public_path('assets/images/vec_1.png'), 96, $baseline - 20, 2, 18);

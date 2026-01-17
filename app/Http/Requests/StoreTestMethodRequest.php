@@ -24,6 +24,7 @@ class StoreTestMethodRequest extends FormRequest
         return [
             'name' => 'required|unique:test_methods,name',
             'description' => 'nullable',
+            'file' => 'nullable|file|mimes:pdf,doc,docx|max:6120',
         ];
     }
 }

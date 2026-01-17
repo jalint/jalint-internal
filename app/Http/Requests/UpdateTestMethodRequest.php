@@ -25,6 +25,7 @@ class UpdateTestMethodRequest extends FormRequest
         return [
             'name' => ['required',  Rule::unique('test_methods', 'name')->ignore($this->route('test_method'))],
             'description' => 'nullable',
+            'file' => 'nullable|file|mimes:pdf,doc,docx|max:6120',
         ];
     }
 }

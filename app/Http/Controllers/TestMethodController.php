@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTestMethodRequest;
 use App\Http\Requests\UpdateTestMethodRequest;
 use App\Models\TestMethod;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 class TestMethodController extends Controller
@@ -37,7 +38,14 @@ class TestMethodController extends Controller
      */
     public function store(StoreTestMethodRequest $request)
     {
-        $testMethod = TestMethod::create($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('file')) {
+            $data['file'] = $request->file('file')
+                ->store('test_methods', 'public');
+        }
+
+        $testMethod = TestMethod::create($data);
 
         return response()->json($testMethod, 201);
     }
@@ -55,7 +63,22 @@ class TestMethodController extends Controller
      */
     public function update(UpdateTestMethodRequest $request, TestMethod $testMethod): JsonResponse
     {
-        $testMethod->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('file')) {
+            // hapus file lama jika ada
+            if ($testMethod->file) {
+                Storage::disk('public')->delete($testMethod->file);
+            }
+
+            $data['file'] = $request->file('file')
+                ->store('test_methods', 'public');
+        } else {
+            // cegah file lama ketimpa null
+            unset($data['file']);
+        }
+
+        $testMethod->update($data);
 
         return response()->json($testMethod->fresh());
     }
@@ -65,6 +88,10 @@ class TestMethodController extends Controller
      */
     public function destroy(TestMethod $testMethod)
     {
+        if ($testMethod->file) {
+            Storage::disk('public')->delete($testMethod->file);
+        }
+
         $testMethod->delete();
 
         return response()->noContent();

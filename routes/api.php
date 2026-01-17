@@ -25,6 +25,7 @@ use App\Http\Controllers\TestMethodController;
 use App\Http\Controllers\TestPackageController;
 use App\Http\Controllers\TestParameterController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WilayahController;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -91,6 +92,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         '/offers/{offer}/documents/subkon/admin',
         [OfferDocumentController::class, 'uploadByAdmin']
     )->middleware('role:admin_kuptdk');
+
+    Route::get('/provinces', [WilayahController::class, 'index']);
+    Route::get('/cities/{id}', [WilayahController::class, 'getCity']);
 });
 
 Route::get('/cetak', function () {
