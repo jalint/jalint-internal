@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminInvoiceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\CompanyBankAccountController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOfferController;
@@ -73,6 +74,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('subkons', SubkonController::class);
     Route::apiResource('templates', TemplateController::class);
     Route::apiResource('bank-accounts', CompanyBankAccountController::class);
+    Route::apiResource('companies', CompanyController::class);
 
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
