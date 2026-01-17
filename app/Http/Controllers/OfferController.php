@@ -9,7 +9,6 @@ use App\Models\OfferReview;
 use App\Models\OfferSampleParameter;
 use App\Models\ReviewStep;
 use App\Models\User;
-use App\Queries\OfferVisibility;
 use App\Services\OfferStatusResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,7 +21,7 @@ class OfferController extends Controller
     {
         $role = auth()->user()->roles->first()->name;
 
-        $base = OfferVisibility::forRole($role)
+        $base = Offer::query()
             ->with('currentReview.reviewStep');
 
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
@@ -188,7 +187,7 @@ class OfferController extends Controller
 
                 $summary['waiting_mt'] = (clone $base)
                     ->where('status', 'in_review')
-                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                    ->whereHas('currentReview', fn ($q) => $q
                           ->whereHas(
                               'reviewStep',
                               fn ($qs) => $qs->where('code', 'manager_teknis')
@@ -256,7 +255,7 @@ class OfferController extends Controller
         $role = auth()->user()->roles->first()->name;
         $filter = $request->query('filter', 'all');
 
-        $query = OfferVisibility::forRole($role)
+        $query = Offer::query()
             ->with([
                 'customer:id,name',
                 'currentReview.reviewStep',
@@ -299,9 +298,30 @@ class OfferController extends Controller
 
             case 'admin_kuptdk':
                 match ($filter) {
+                    'approved_ma' => $query->where('status', 'in_review')
+                    ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_admin')
+                          )
+                    )
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'manager_teknis')
+                    ),
+                    'approved_mt' => $query->where('status', 'in_review')
+                    ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_teknis')
+                          )
+                    )
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'customer')
+                    ),
                     'kaji_ulang' => $this->whereCurrentReview($query, 'admin_kuptdk'),
                     'waiting_ma' => $this->whereCurrentReview($query, 'manager_admin', 'pending'),
-                    'waiting_mt' => $this->whereCurrentReview($query, 'manager_teknis', 'pending'),
                     default => null,
                 };
                 break;
@@ -316,7 +336,14 @@ class OfferController extends Controller
 
             case 'manager_teknis':
                 match ($filter) {
-                    'verifikasi' => $this->whereCurrentReview($query, 'manager_teknis'),
+                    'verifikasi_kaji_ulang' => $this->whereCurrentReview($query, 'manager_teknis'),
+                    'approved_mt' => $query->where('status', 'in_review')
+                    ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_teknis')
+                          )
+                    ),
                     default => null,
                 };
                 break;
