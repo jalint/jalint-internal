@@ -20,8 +20,8 @@ class OfferStatusResolver
             return 'Completed';
         }
 
-        if ($offer->status == 'approved') {
-            if ($role == 'admin_penawaran') {
+        if ($offer->status === 'approved') {
+            if ($role === 'admin_penawaran') {
                 if (!$offer->invoice()->exists()) {
                     return 'Disetujui';
                 }
@@ -32,7 +32,7 @@ class OfferStatusResolver
             }
         }
 
-        if ($offer->status == 'draft') {
+        if ($offer->status === 'draft') {
             return 'Draft';
         }
 
@@ -51,13 +51,17 @@ class OfferStatusResolver
                 $offer->status === 'in_review'
                 && $review->reviewStep->code !== 'admin_penawaran' => 'Proses Kaji Ulang',
 
+                // ===== PERBAIKAN QUERY (PENDING PAYMENT) =====
                 $offer->status === 'approved'
-                && $offer->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
-                )->exists() => 'Cek Pembayaran Pelanggan',
+                && $offer->invoice()
+                    ->whereHas('payments', fn ($q) => $q->where('status', 'pending'))
+                    ->exists() => 'Cek Pembayaran Pelanggan',
 
+                // ===== PERBAIKAN QUERY (APPROVED PAYMENT) =====
                 $offer->status === 'approved'
-                && $offer->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
-                )->exists() => 'Proses Pengujian',
+                && $offer->invoice()
+                    ->whereHas('payments', fn ($q) => $q->where('status', 'approved'))
+                    ->exists() => 'Proses Pengujian',
 
                 default => 'Proses Kaji Ulang',
             },
@@ -73,10 +77,14 @@ class OfferStatusResolver
                 $review->reviewStep->code === 'manager_admin'
                 && $review->decision === 'pending' => 'Menunggu Persetujuan MA',
 
-                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_admin')->value('id'))
+                $offer->hasApprovedBy(
+                    ReviewStep::query()->where('code', 'manager_admin')->value('id')
+                )
                 && $review->reviewStep->code === 'manager_teknis' => 'Disetujui MA',
 
-                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_teknis')->value('id'))
+                $offer->hasApprovedBy(
+                    ReviewStep::query()->where('code', 'manager_teknis')->value('id')
+                )
                 && $review->reviewStep->code === 'customer' => 'Disetujui MT',
 
                 default => 'Kaji Ulang',
@@ -104,7 +112,9 @@ class OfferStatusResolver
             'manager_teknis' => match (true) {
                 $review->reviewStep->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
 
-                $offer->hasApprovedBy(ReviewStep::query()->where('code', 'manager_teknis')->value('id')) => 'Disetujui MT',
+                $offer->hasApprovedBy(
+                    ReviewStep::query()->where('code', 'manager_teknis')->value('id')
+                ) => 'Disetujui MT',
 
                 default => 'Verifikasi Kaji Ulang',
             },
