@@ -77,12 +77,14 @@ class OfferController extends Controller
 
                 // ✅ Proses Pengujian (approved payment exists)
                 $summary['proses_pengujian'] = (clone $base)
-                    ->where('status', 'approved')
-                    ->whereHas(
-                        'invoice.payments',
-                        fn ($q) => $q->where('status', 'approved')
-                    )
-                    ->count();
+                ->where(function ($q) {
+                    $q->where('is_dp', 0)
+                        ->orWhere(function ($qq) {
+                            $qq->where('status', 'approved')
+                            ->whereHas('invoice.payments', fn ($p) => $p->where('status', 'approved'));
+                        });
+                })
+                 ->count();
 
                 $summary['verif_pelanggan'] = (clone $base)
                     ->where('created_by_type', 'customer')
@@ -123,13 +125,11 @@ class OfferController extends Controller
                     ->count();
 
                 $summary['waiting_ma'] = (clone $base)
-                    ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
-                          ->whereHas(
-                              'reviewStep',
-                              fn ($qs) => $qs->where('code', 'manager_admin')
-                          )
-                    )
-                    ->count();
+                ->whereHas(
+                    'currentReview.reviewStep',
+                    fn ($q) => $q->where('code', 'manager_admin')
+                )
+                ->count();
 
                 $summary['approved_ma'] = (clone $base)
                     ->where('status', 'in_review')
@@ -277,13 +277,21 @@ class OfferController extends Controller
 
                     'proses_kaji_ulang' => $query
                         ->where('status', 'in_review')
-                        ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', '!=', 'admin_penawaran')
+                        ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
+                                ->whereHas('reviewStep', fn ($qs) => $qs->where('code', '!=', 'admin_penawaran')
+                                )
                         ),
 
                     'cek_pembayaran_pelanggan' => $query->where('status', 'approved')->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
                     ),
 
-                    'proses_pengujian' => $query->where('status', 'approved')->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')),
+                    'proses_pengujian' => $query->where(function ($q) {
+                        $q->where('is_dp', 0)
+                            ->orWhere(function ($qq) {
+                                $qq->where('status', 'approved')
+                                ->whereHas('invoice.payments', fn ($p) => $p->where('status', 'approved'));
+                            });
+                    }),
 
                     default => null,
                 };

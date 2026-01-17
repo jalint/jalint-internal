@@ -32,16 +32,7 @@ class OfferVisibility
      */
     private static function adminKuptdk()
     {
-        return Offer::query()
-            ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
-            ->whereHas('currentReview.reviewStep', function ($q) {
-                $q->whereIn('code', [
-                    'admin_kuptdk',
-                    'manager_admin',
-                    'manager_teknis',
-                    'customer',
-                ]);
-            });
+        return Offer::query();
     }
 
     /**

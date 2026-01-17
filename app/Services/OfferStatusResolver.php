@@ -63,7 +63,7 @@ class OfferStatusResolver
                     ->whereHas('payments', fn ($q) => $q->where('status', 'approved'))
                     ->exists() => 'Proses Pengujian',
 
-                default => 'Proses Kaji Ulang',
+                default => 'Proses Pengujian',
             },
 
             /*
