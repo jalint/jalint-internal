@@ -255,7 +255,7 @@ class OfferController extends Controller
                               )
                         ),
 
-                    'in_review' => $query
+                    'proses_kaji_ulang' => $query
                         ->where('status', 'in_review')
                         ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', '!=', 'admin_penawaran')
                         ),
