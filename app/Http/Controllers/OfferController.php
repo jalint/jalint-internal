@@ -32,30 +32,15 @@ class OfferController extends Controller
             ]);
         }
 
-        // =========================
-        // FILTER TANGGAL MANUAL
-        // =========================
         if ($request->filled('start_date')) {
-            $base->whereDate(
-                'offer_date',
-                '>=',
-                Carbon::createFromFormat('Y-m-d', $request->start_date)
-            );
+            $base->whereDate('offer_date', '>=', $request->start_date);
         }
 
         if ($request->filled('end_date')) {
-            $base->whereDate(
-                'offer_date',
-                '<=',
-                Carbon::createFromFormat('Y-m-d', $request->end_date)
-            );
+            $base->whereDate('offer_date', '<=', $request->end_date);
         }
 
         $summary = [];
-
-        /*
-         * Semua data yang visible untuk role
-         */
         $summary['all'] = (clone $base)->count();
 
         switch ($role) {
@@ -71,25 +56,40 @@ class OfferController extends Controller
 
                 $summary['proses_kaji_ulang'] = (clone $base)
                     ->where('status', 'in_review')
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', '!=', 'admin_penawaran')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', '!=', 'admin_penawaran')
                     )
                     ->count();
 
-                $summary['cek_pembayaran_pelanggan'] = (clone $base)->where('status', 'approved')
-                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
+                // ✅ Cek Pembayaran Pelanggan (pending ONLY)
+                $summary['cek_pembayaran_pelanggan'] = (clone $base)
+                    ->where('status', 'approved')
+                    ->whereHas(
+                        'invoice.payments',
+                        fn ($q) => $q->where('status', 'pending')
+                    )
+                    ->whereDoesntHave(
+                        'invoice.payments',
+                        fn ($q) => $q->where('status', 'approved')
                     )
                     ->count();
 
+                // ✅ Proses Pengujian (approved payment exists)
                 $summary['proses_pengujian'] = (clone $base)
                     ->where('status', 'approved')
-                    ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
+                    ->whereHas(
+                        'invoice.payments',
+                        fn ($q) => $q->where('status', 'approved')
                     )
                     ->count();
 
                 $summary['verif_pelanggan'] = (clone $base)
                     ->where('created_by_type', 'customer')
                     ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'admin_penawaran')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'admin_penawaran')
                           )
                     )
                     ->count();
@@ -116,34 +116,46 @@ class OfferController extends Controller
                 */
             case 'admin_kuptdk':
                 $summary['kaji_ulang'] = (clone $base)
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'admin_kuptdk')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'admin_kuptdk')
                     )
                     ->count();
 
                 $summary['waiting_ma'] = (clone $base)
                     ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'manager_admin')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_admin')
                           )
                     )
                     ->count();
 
                 $summary['approved_ma'] = (clone $base)
-                      ->where('status', 'in_review')
+                    ->where('status', 'in_review')
                     ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'manager_admin')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_admin')
                           )
                     )
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'manager_teknis')
                     )
                     ->count();
 
                 $summary['approved_mt'] = (clone $base)
                     ->where('status', 'in_review')
                     ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'manager_teknis')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_teknis')
                           )
                     )
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'customer')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'customer')
                     )
                     ->count();
 
@@ -168,14 +180,18 @@ class OfferController extends Controller
                 */
             case 'manager_admin':
                 $summary['verifikasi_kaji_ulang'] = (clone $base)
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_admin')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'manager_admin')
                     )
                     ->count();
 
                 $summary['waiting_mt'] = (clone $base)
-                      ->where('status', 'in_review')
+                    ->where('status', 'in_review')
                     ->whereHas('currentReview', fn ($q) => $q->where('decision', 'pending')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'manager_teknis')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_teknis')
                           )
                     )
                     ->count();
@@ -201,14 +217,18 @@ class OfferController extends Controller
                 */
             case 'manager_teknis':
                 $summary['verifikasi_kaji_ulang'] = (clone $base)
-                    ->whereHas('currentReview.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
+                    ->whereHas(
+                        'currentReview.reviewStep',
+                        fn ($q) => $q->where('code', 'manager_teknis')
                     )
                     ->count();
 
                 $summary['approved_mt'] = (clone $base)
-                  ->where('status', 'in_review')
+                    ->where('status', 'in_review')
                     ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')
-                          ->whereHas('reviewStep', fn ($qs) => $qs->where('code', 'manager_teknis')
+                          ->whereHas(
+                              'reviewStep',
+                              fn ($qs) => $qs->where('code', 'manager_teknis')
                           )
                     )
                     ->count();
