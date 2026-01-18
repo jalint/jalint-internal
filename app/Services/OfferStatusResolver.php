@@ -96,9 +96,9 @@ class OfferStatusResolver
              * =========================
              */
             'manager_admin' => match (true) {
-                $review->reviewStep->code === 'manager_admin' => 'Verifikasi Kaji Ulang',
+                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_admin' => 'Verifikasi Kaji Ulang',
 
-                $review->reviewStep->code === 'manager_teknis'
+                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_teknis'
                 && $review->decision === 'pending' => 'Menunggu Persetujuan MT',
 
                 default => 'Verifikasi Kaji Ulang',

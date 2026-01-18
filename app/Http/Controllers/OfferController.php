@@ -329,7 +329,7 @@ class OfferController extends Controller
 
             case 'manager_admin':
                 match ($filter) {
-                    'verifikasi' => $this->whereCurrentReview($query, 'manager_admin'),
+                    'verifikasi_kaji_ulang' => $this->whereCurrentReview($query, 'manager_admin'),
                     'waiting_mt' => $this->whereCurrentReview($query, 'manager_teknis', 'pending'),
                     default => null,
                 };

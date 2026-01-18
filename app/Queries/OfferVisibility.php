@@ -32,7 +32,12 @@ class OfferVisibility
      */
     private static function adminKuptdk()
     {
-        return Offer::query();
+        return Offer::query()->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
+                  ->whereHas('reviews.reviewStep', function ($q) {
+                      $q->whereIn('code', [
+                          'customer', 'manager_admin', 'manage_teknis', 'admin_kuptdk',
+                      ]);
+                  });
     }
 
     /**
@@ -43,8 +48,22 @@ class OfferVisibility
     {
         return Offer::query()
             ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
-            ->whereHas('currentReview.reviewStep', function ($q) {
-                $q->whereNotIn('code', ['customer', 'admin_penawaran', 'admin_kuptdk']);
+
+            // Offer sudah pernah masuk alur admin / teknis
+            ->whereHas('reviews.reviewStep', function ($q) {
+                $q->whereIn('code', [
+                    'manager_admin',
+                    'manager_teknis',
+                ]);
+            })
+
+            // ❌ BLOKIR jika customer masih pending
+            ->whereDoesntHave('reviews', function ($q) {
+                $q->where('decision', 'pending')
+                  ->whereHas(
+                      'reviewStep',
+                      fn ($qs) => $qs->where('code', 'customer')
+                  );
             });
     }
 
@@ -56,7 +75,7 @@ class OfferVisibility
     {
         return Offer::query()
             ->whereIn('status', ['in_review', 'approved', 'completed', 'rejected'])
-            ->whereHas('currentReview.reviewStep', function ($q) {
+            ->whereHas('reviews.reviewStep', function ($q) {
                 $q->whereIn('code', [
                     'manager_teknis',
                     'customer',
