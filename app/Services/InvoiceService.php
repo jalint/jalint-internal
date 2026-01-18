@@ -14,6 +14,11 @@ class InvoiceService
             return $offer->invoice; // idempotent
         }
 
+        $subTotal = $offer->subtotal_amount - $offer->discount_amount;
+
+        $vatAmount = $subTotal * ($offer->vat_percent / 100);
+        $pphAmount = $subTotal * ($offer->pph_percent / 100);
+
         $invoice = Invoice::create([
             'offer_id' => $offer->id,
             'invoice_number' => $this->generateInvoiceNumber(),
@@ -21,12 +26,12 @@ class InvoiceService
             'issued_at' => now(),
             'due_date' => now()->addDays(14),
             'status' => 'unpaid',
-            'subtotal_amount' => $offer->subtotal_amount,
+            'subtotal_amount' => $offer->subtotal_amount, // Sebelum Diskon
             'total_amount' => $offer->total_amount,
             'discount_amount' => $offer->discount_amount,
-            'vat_amount' => $offer->vat_amount,
+            'vat_amount' => $vatAmount,
             'vat_percent' => $offer->vat_percent,
-            'pph_amount' => $offer->pph_amount,
+            'pph_amount' => $pphAmount,
             'pph_percent' => $offer->pph_percent,
         ]);
 

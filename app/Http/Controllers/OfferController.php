@@ -413,8 +413,11 @@ class OfferController extends Controller
                     'testing_activities' => $request->testing_activities,
                     'discount_amount' => $request->discount_amount ?? 0,
                     'vat_percent' => $request->vat_percent ?? 0,
-                    'withholding_tax_percent' => $request->withholding_tax_percent ?? 0,
+                    'pph_percent' => $request->pph_percent ?? 0,
+                    'subtotal_amount' => $request->subtotal_amount ?? 0,
+                    'total_amount' => $request->total_amount ?? 0,
                     'status' => $status,
+                    'is_dp' => $request->is_dp,
                     'created_by_id' => auth()->id(),
                     'created_by_type' => 'admin',
                 ]);
@@ -622,8 +625,10 @@ class OfferController extends Controller
                 'location' => $request->location,
                 'testing_activities' => $request->testing_activities,
                 'discount_amount' => $request->discount_amount ?? 0,
+                'subtotal_amount' => $request->subtotal_amount ?? 0,
+                'total_amount' => $request->total_amount ?? 0,
                 'vat_percent' => $request->vat_percent ?? 0,
-                'withholding_tax_percent' => $request->withholding_tax_percent ?? 0,
+                'pph_percent' => $request->pph_percent ?? 0,
                 'status' => 'in_review',
             ]);
 
