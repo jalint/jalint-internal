@@ -52,6 +52,7 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'photo_path' => $photoPath,
+            'status' => $validated['status'],
         ]);
 
         $user->assignRole($validated['role']);
