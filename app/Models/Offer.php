@@ -127,4 +127,9 @@ class Offer extends Model
     {
         return $this->hasOne(Invoice::class);
     }
+
+    public function lhpDocument()
+    {
+        return $this->hasOne(LhpDocument::class);
+    }
 }

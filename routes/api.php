@@ -11,6 +11,7 @@ use App\Http\Controllers\CustomerOfferController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\JalintPdfController;
+use App\Http\Controllers\LhpDocumentController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\OfferDocumentController;
 use App\Http\Controllers\PositionController;
@@ -96,6 +97,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/provinces', [WilayahController::class, 'index']);
     Route::get('/cities/{id}', [WilayahController::class, 'getCity']);
+
+    Route::get('lhp-documents/eligible-offers', [OfferController::class, 'getEligibleOffersForLhp']);
+    Route::get('lhp-documents/summary', [LhpDocumentController::class, 'summary']);
+    Route::apiResource('lhp-documents', LhpDocumentController::class);
 });
 
 Route::get('/print', [JalintPdfController::class, 'suratTugas']);

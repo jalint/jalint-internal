@@ -32,24 +32,22 @@ class UpdateOfferRequest extends FormRequest
             'location' => ['nullable', 'string'],
             'testing_activities' => ['nullable', 'string'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'subtotal_amount' => ['nullable', 'numeric', 'min:0'],
+            'total' => ['nullable', 'numeric', 'min:0'],
             'vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'withholding_tax_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'pph_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'is_draft' => ['required', 'boolean'],
+            'is_dp' => ['required', 'boolean'],
 
             /* =====================
              | SAMPLES
              ===================== */
             'samples' => ['required', 'array', 'min:1'],
-
             'samples.*.title' => ['required', 'string', 'max:255'],
             'samples.*.parameters' => ['required', 'array', 'min:1'],
-
             'samples.*.parameters.*.test_parameter_id' => ['required', 'exists:test_parameters,id'],
-
             'samples.*.parameters.*.test_package_id' => ['nullable', 'exists:test_packages,id'],
-
             'samples.*.parameters.*.unit_price' => ['required', 'numeric', 'min:0'],
-
             'samples.*.parameters.*.qty' => ['required', 'integer', 'min:1'],
         ];
     }

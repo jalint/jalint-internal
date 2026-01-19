@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class StoreOfferRequest extends FormRequest
 {
@@ -43,13 +44,41 @@ class StoreOfferRequest extends FormRequest
             /* =====================
              | SAMPLES
              ===================== */
-            'samples' => ['required', 'array', 'min:1'],
-            'samples.*.title' => ['required', 'string', 'max:255'],
-            'samples.*.parameters' => ['required', 'array', 'min:1'],
-            'samples.*.parameters.*.test_parameter_id' => ['required', 'exists:test_parameters,id'],
-            'samples.*.parameters.*.test_package_id' => ['nullable', 'exists:test_packages,id'],
-            'samples.*.parameters.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'samples.*.parameters.*.qty' => ['required', 'integer', 'min:1'],
+
+            // 'samples' => ['required', 'array', 'min:1'],
+            // 'samples.*.title' => ['required', 'string', 'max:255'],
+            // 'samples.*.parameters' => ['required', 'array', 'min:1'],
+            // 'samples.*.parameters.*.test_parameter_id' => ['required', 'exists:test_parameters,id'],
+            // 'samples.*.parameters.*.test_package_id' => ['nullable', 'exists:test_packages,id'],
+            // 'samples.*.parameters.*.unit_price' => ['required', 'numeric', 'min:0'],
+            // 'samples.*.parameters.*.qty' => ['required', 'integer', 'min:1'],
+
+            'samples' => [
+                Rule::requiredIf(fn () => $this->boolean('is_draft') === false),
+                'array',
+                'min:1',
+            ],
+
+            'samples.*.title' => ['required_with:samples', 'string', 'max:255'],
+            'samples.*.parameters' => ['required_with:samples', 'array', 'min:1'],
+            'samples.*.parameters.*.test_parameter_id' => [
+                'required_with:samples',
+                'exists:test_parameters,id',
+            ],
+            'samples.*.parameters.*.test_package_id' => [
+                'nullable',
+                'exists:test_packages,id',
+            ],
+            'samples.*.parameters.*.unit_price' => [
+                'required_with:samples',
+                'numeric',
+                'min:0',
+            ],
+            'samples.*.parameters.*.qty' => [
+                'required_with:samples',
+                'integer',
+                'min:1',
+            ],
         ];
     }
 

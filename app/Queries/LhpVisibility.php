@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Queries;
+
+use App\Models\LhpDocument;
+
+class LhpVisibility
+{
+    public static function forRole(string $role)
+    {
+        return match ($role) {
+            'admin_penawaran' => self::adminPenawaran(),
+            'analis' => self::analis(),
+            'penyelia' => self::penyelia(),
+            'admin_input_lhp' => self::admin_input_lhp(),
+            'manager_teknis' => self::manager_teknis(),
+            'admin_premlim' => self::admin_premlim(),
+            default => LhpDocument::query()->whereRaw('1=0'),
+        };
+    }
+
+    private static function adminPenawaran()
+    {
+        return LhpDocument::query();
+    }
+
+    private static function analis()
+    {
+        return LhpDocument::query();
+    }
+
+    private static function penyelia()
+    {
+        return LhpDocument::query();
+    }
+
+    private static function admin_input_lhp()
+    {
+        return LhpDocument::query();
+    }
+
+    private static function manager_teknis()
+    {
+        return LhpDocument::query();
+    }
+
+    private static function admin_premlim()
+    {
+        return LhpDocument::query();
+    }
+}
