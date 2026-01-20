@@ -550,6 +550,11 @@ class OfferController extends Controller
                                 'unit_price' => $param->price,
                                 'qty' => $param->qty,
                                 'subtotal' => $param->price * $param->qty,
+                                'alat' => $param->alat,
+                                'bahan_kimia' => $param->bahan_kimia,
+                                'kondisi_akom' => $param->kondisi_akom,
+                                'pesonel' => $param->personel,
+                                'overload' => $param->overload,
                                 'subkon' => $param->subkon ? [
                                     'id' => $param->subkon->id,
                                     'name' => $param->subkon->name,
@@ -601,29 +606,31 @@ class OfferController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($id);
 
-            /*
+            if ($offer->status != 'draft') {
+                /*
              * 2️⃣ Validasi STATE
              */
-            if ($offer->status !== 'rejected') {
-                abort(400, 'Penawaran hanya dapat direvisi jika status rejected');
-            }
+                if ($offer->status !== 'rejected') {
+                    abort(400, 'Penawaran hanya dapat direvisi jika status rejected');
+                }
 
-            /*
-             * 3️⃣ Validasi ROLE
-             */
-            if (!$user->hasRole('admin_penawaran')) {
-                abort(403, 'Hanya Admin Penawaran yang dapat merevisi penawaran');
-            }
+                /*
+                 * 3️⃣ Validasi ROLE
+                 */
+                if (!$user->hasRole('admin_penawaran')) {
+                    abort(403, 'Hanya Admin Penawaran yang dapat merevisi penawaran');
+                }
 
-            /**
-             * 4️⃣ Pastikan review terakhir = rejected.
-             */
-            $lastReview = $offer->reviews()
-                ->latest('created_at')
-                ->first();
+                /**
+                 * 4️⃣ Pastikan review terakhir = rejected.
+                 */
+                $lastReview = $offer->reviews()
+                    ->latest('created_at')
+                    ->first();
 
-            if (!$lastReview || $lastReview->decision !== 'rejected') {
-                abort(400, 'Penawaran tidak berada pada kondisi revisi');
+                if (!$lastReview || $lastReview->decision !== 'rejected') {
+                    abort(400, 'Penawaran tidak berada pada kondisi revisi');
+                }
             }
 
             /*
@@ -697,9 +704,6 @@ class OfferController extends Controller
                 'note' => 'Revisi penawaran setelah penolakan',
             ]);
 
-            /**
-             * 8️⃣ LANJUT KE STEP BERIKUTNYA (Manager Admin).
-             */
             $nextStep = ReviewStep::where(
                 'sequence_order',
                 '>',
