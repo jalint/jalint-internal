@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::create('lhp_document_parameters', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('lhp_document_detail_id')->constrained()->cascadeOnDelete();
             $table->foreignId('offer_sample_parameter_id')->constrained()->restrictOnDelete();
             $table->text('result')->nullable();
             $table->text('description_results')->nullable();
