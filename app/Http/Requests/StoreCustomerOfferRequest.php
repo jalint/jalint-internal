@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCustomerOfferRequest extends FormRequest
 {
@@ -26,16 +27,16 @@ class StoreCustomerOfferRequest extends FormRequest
             // =====================
             // SAMPLES
             // =====================
-            'samples' => ['required', 'array', 'min:1'],
+            'samples' => [Rule::requiredIf(fn () => $this->boolean('is_draft') === false),  'array', 'min:1'],
 
             'samples.*.title' => [
-                'required',
+                'required_with:samples',
                 'string',
                 'max:255',
             ],
 
             'samples.*.parameters' => [
-                'required',
+                'required_with:samples',
                 'array',
                 'min:1',
             ],
@@ -44,18 +45,18 @@ class StoreCustomerOfferRequest extends FormRequest
             // SAMPLE PARAMETERS
             // =====================
             'samples.*.parameters.*.test_parameter_id' => [
-                'required',
+                'required_with:samples',
                 'exists:test_parameters,id',
             ],
 
             'samples.*.parameters.*.price' => [
-                'required',
+                'required_with:samples',
                 'numeric',
                 'min:0',
             ],
 
             'samples.*.parameters.*.qty' => [
-                'required',
+                'required_with:samples',
                 'integer',
                 'min:1',
             ],

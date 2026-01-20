@@ -40,6 +40,7 @@ Route::post('/customer/login', [AuthController::class, 'loginCustomer']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
+        Route::patch('customers/offers/{offer}/draft', [CustomerOfferController::class, 'updateDraft']);
         Route::post('customers/offers/{offer}/review', [CustomerOfferController::class, 'reviewCustomer']);
         Route::get('customers/offers/summary', [CustomerOfferController::class, 'summary']);
         Route::post('customers/invoces/payment', [AdminInvoiceController::class, 'storeCustomerPayment']);

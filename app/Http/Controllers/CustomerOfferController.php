@@ -293,9 +293,12 @@ class CustomerOfferController extends Controller
             $customerAccount = auth('customer')->user();
             $customerId = $customerAccount->customer_id;
 
-            /**
+            /*
              * 1️⃣ CREATE OFFER.
              */
+
+            $isDraft = $request->boolean('is_draft') ? 'draft' : 'in_review';
+
             $offer = Offer::create([
                 'offer_number' => $this->generateOfferNumber(),
                 'title' => $request->title,
@@ -304,14 +307,15 @@ class CustomerOfferController extends Controller
                 'expired_date' => $request->expired_date,
                 'request_number' => $request->request_number,
                 'location' => $request->location,
-                'status' => 'in_review',
+                'status' => $isDraft,
                 'created_by_id' => $customerAccount->id,
                 'created_by_type' => 'customer',
             ]);
 
-            /*
-             * 2️⃣ CREATE SAMPLES + PARAMETERS
-             */
+            if ($isDraft == 'draft') {
+                return response()->json(['message' => 'Data Draft penawaran berhasil dibuat']);
+            }
+
             foreach ($request->samples as $sampleInput) {
                 $sample = $offer->samples()->create([
                     'title' => $sampleInput['title'],
@@ -534,6 +538,58 @@ class CustomerOfferController extends Controller
         $unitCode = config('offer.unit_code', 'Jalint-Lab');
 
         return "{$sequenceFormatted}/{$unitCode}/{$monthRoman}/{$year}";
+    }
+
+    public function updateDraft(StoreCustomerOfferRequest $request, $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $customerAccount = auth('customer')->user();
+
+            $offer = Offer::query()
+                ->where('id', $id)
+                ->where('customer_id', $customerAccount->customer_id)
+                ->where('status', 'draft')
+                ->firstOrFail();
+
+            /*
+             * UPDATE OFFER (DRAFT ONLY)
+             */
+            $offer->update([
+                'title' => $request->title,
+                'offer_date' => $request->offer_date,
+                'expired_date' => $request->expired_date,
+                'request_number' => $request->request_number,
+                'location' => $request->location,
+            ]);
+
+            foreach ($request->samples as $sampleInput) {
+                $sample = $offer->samples()->create([
+                    'title' => $sampleInput['title'],
+                ]);
+
+                foreach ($sampleInput['parameters'] as $param) {
+                    $sample->parameters()->create([
+                        'test_parameter_id' => $param['test_parameter_id'],
+                        'price' => $param['price'],
+                        'qty' => $param['qty'],
+                        'subkon_id' => 1, // default internal
+                    ]);
+                }
+            }
+
+            $firstStep = ReviewStep::where('code', 'admin_penawaran')->firstOrFail();
+
+            OfferReview::create([
+                'offer_id' => $offer->id,
+                'review_step_id' => $firstStep->id,
+                'decision' => 'pending',
+            ]);
+
+            return response()->json([
+                'message' => 'Draft penawaran berhasil diperbarui',
+                'offer_id' => $offer->id,
+            ], 200);
+        });
     }
 
     protected function toRoman(int $month): string
