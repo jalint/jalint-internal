@@ -740,6 +740,18 @@ class OfferController extends Controller
             'note' => 'nullable|string',
         ];
 
+        if ($user->hasRole('admin_penawaran') && $request->decision != 'rejected') {
+            $rules = array_merge($rules, [
+                'discount_amount' => ['nullable', 'numeric', 'min:0'],
+                'subtotal_amount' => ['required', 'numeric', 'min:0'],
+                'total_amount' => ['required', 'numeric', 'min:0'],
+                'vat_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+                'pph_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+                'is_draft' => ['required', 'boolean'],
+                'is_dp' => ['required', 'boolean'],
+            ]);
+        }
+
         /*
          * =========================
          * ADMIN KUPTDK – WAJIB DETAIL
@@ -789,6 +801,19 @@ class OfferController extends Controller
 
             if (!$user->hasRole($currentReview->reviewStep->code)) {
                 abort(403, 'Anda tidak berhak mereview penawaran ini');
+            }
+
+            if ($currentReview->reviewStep->code === 'admin_penawaran') {
+                $offer->update([
+                    'discount_amount' => $validated['discount_amount'],
+                    'vat_percent' => $validated['vat_percent'],
+                    'ppn_amount' => $validated['ppn_amount'],
+                    'pph_percent' => $validated['pph_percent'],
+                    'pph_amount' => $validated['pph_amount'],
+                    'subtotal_amount' => $validated['subtotal_amount'],
+                    'total_amount' => $validated['total_amount'],
+                    'is_dp' => $validated['is_dp'],
+                ]);
             }
 
             /*

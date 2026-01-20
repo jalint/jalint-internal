@@ -35,7 +35,7 @@ class StoreOfferRequest extends FormRequest
             'testing_activities' => ['nullable', 'string'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'subtotal_amount' => ['nullable', 'numeric', 'min:0'],
-            'total' => ['nullable', 'numeric', 'min:0'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
             'vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pph_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'is_draft' => ['required', 'boolean'],
