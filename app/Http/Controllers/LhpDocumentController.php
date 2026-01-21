@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLhpDocumentRequest;
 use App\Models\LhpDocument;
+use App\Models\LhpDocumentParameter;
+use App\Models\LhpReview;
 use App\Models\Offer;
 use App\Models\OfferSample;
 use App\Queries\LhpVisibility;
@@ -340,7 +342,13 @@ class LhpDocumentController extends Controller
     public function show($id)
     {
         $lhpDocument = LhpDocument::query()
-            ->with('details')
+               ->with([
+                   'details',
+                   'details.lhpDocumentParamters',
+                   'details.lhpDocumentParamters.offerSampleParameter',
+                   'details.lhpDocumentParamters.offerSampleParameter.testParameter:id,test_method_id,name',
+                   'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
+               ])
             ->findOrFail($id);
 
         $offer = Offer::query()
@@ -367,13 +375,14 @@ class LhpDocumentController extends Controller
             ->where('offers.id', $lhpDocument->offer_id)
             ->firstOrFail();
 
-        $samples = OfferSample::query()
-            ->where('offer_id', $lhpDocument->offer_id)
-            ->with(['parameters.testParameter.testMethod'])
-            ->get();
+        if ($lhpDocument->status == 'draft') {
+            $samples = OfferSample::query()
+                ->where('offer_id', $lhpDocument->offer_id)
+                ->with(['parameters.testParameter.testMethod'])
+                ->get();
+        }
 
         return response()->json([
-            'lhp_document' => $lhpDocument,
             'offer' => [
                 'offer_id' => $offer->offer_id,
                 'offer_number' => $offer->offer_number,
@@ -385,7 +394,178 @@ class LhpDocumentController extends Controller
                 'pic_position' => $offer->pic_position,
                 'total_samples' => $offer->samples_count,
             ],
-            'samples' => $samples,
+            'lhp_document' => $lhpDocument,
+            'samples' => $samples ?? [],
         ]);
+    }
+
+    public function review(Request $request, $id)
+    {
+        $user = auth()->user();
+
+        $rules = [
+            'decision' => 'required|in:approved,rejected',
+            'note' => 'nullable|string',
+        ];
+
+        $validated = $request->validate($rules);
+
+        return DB::transaction(function () use ($validated, $id, $user) {
+            $lhpDocument = LhpDocument::with(['currentReview'])
+            ->lockForUpdate()
+            ->findOrFail($id);
+
+            $currentReview = $lhpDocument->currentReview;
+
+            if ($lhpDocument->status == 'in_analysis' && $currentReview->role = 'penyelia') {
+                $currentReview->update([
+                    'decision' => $validated['decision'],
+                    'note' => $validated['note'] ?? null,
+                    'reviewer_by' => $user->name,
+                    'reviewed_at' => now(),
+                ]);
+
+                if ($validated['decision'] == 'approved') {
+                    LhpReview::create([
+                        'lhp_document_id' => $lhpDocument->id,
+                        'role' => 'admin_input_lhp',
+                        'decision' => 'pending',
+                        'note' => '',
+                    ]);
+
+                    return response()->json(['message' => 'Dokumen LHP berhasil diverifikasi']);
+                }
+            }
+
+            if ($validated['decision'] === 'rejected') {
+                $lhpDocument->update([
+                    'status' => 'revisied',
+                ]);
+
+                LhpReview::create([
+                    'lhp_document_id' => $lhpDocument->id,
+                    'role' => 'analis',
+                    'decision' => 'pending',
+                    'note' => '',
+                ]);
+
+                return response()->json([
+                    'message' => 'LHP ditolak',
+                ]);
+            }
+
+            /*
+             * =========================
+             * VALIDASI WORKFLOW
+             * =========================
+             */
+            if ($lhpDocument->status !== 'in_review') {
+                abort(400, 'LHP tidak dalam proses review');
+            }
+
+            if (!$currentReview) {
+                abort(400, 'Tidak ada review aktif');
+            }
+            // TODO
+            // Tambah LHP Review Step
+            // Done Analis Input,Penyelia Approved|Reject
+            $currentReview->update([
+                'decision' => $validated['decision'],
+                'note' => $validated['note'] ?? null,
+                'reviewer_by' => $user->name,
+                'reviewed_at' => now(),
+            ]);
+
+            // LhpReview::create([
+            //     'lhp_document_id' => $lhpDocument->id,
+            //     'role' => 'analis',
+            //     'decision' => 'pending',
+            //     'note' => '',
+            // ]);
+
+            return response()->json([
+                'message' => 'Penawaran disetujui sepenuhnya',
+            ]);
+        });
+    }
+
+    public function fillAnalysis(Request $request)
+    {
+        $validated = $request->validate([
+            'lhp_document_id' => ['required', 'exists:lhp_documents,id'],
+            'lhp' => ['required', 'array', 'min:1'],
+            'lhp.*.lhp_document_detail_id' => ['required', 'exists:lhp_document_details,id'],
+            'lhp.*.parameters' => ['required', 'array', 'min:1'],
+            'lhp.*.parameters.*.id' => ['required', 'exists:offer_sample_parameters,id'],
+            'lhp.*.parameters.*.result' => ['nullable', 'string'],
+        ]);
+
+        return DB::transaction(function () use ($validated) {
+            $lhp = LhpDocument::lockForUpdate()->findOrFail($validated['lhp_document_id']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | VALIDASI STATUS (INI KUNCI)
+            |--------------------------------------------------------------------------
+            */
+            if (!in_array($lhp->status, ['draft', 'in_analysis'])) {
+                abort(403, 'LHP tidak dapat diisi pada status saat ini');
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | SET STATUS → in_analysis
+            |--------------------------------------------------------------------------
+            */
+            if ($lhp->status === 'draft') {
+                $lhp->update([
+                    'status' => 'in_analysis',
+                ]);
+
+                LhpReview::create([
+                    'lhp_document_id' => $lhp->id,
+                    'role' => 'penyelia',
+                    'decision' => 'pending',
+                    'note' => '',
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIMPAN HASIL ANALISIS
+            |--------------------------------------------------------------------------
+            */
+            foreach ($validated['lhp'] as $detail) {
+                // pastikan detail milik LHP ini
+                if (!$lhp->details()->where('id', $detail['lhp_document_detail_id'])->exists()) {
+                    abort(422, 'Detail LHP tidak valid');
+                }
+
+                foreach ($detail['parameters'] as $param) {
+                    LhpDocumentParameter::updateOrCreate(
+                        [
+                            'lhp_document_detail_id' => $detail['lhp_document_detail_id'],
+                            'offer_sample_parameter_id' => $param['id'],
+                        ],
+                        [
+                            'result' => $param['result'],
+                        ]
+                    );
+                }
+            }
+
+            LhpReview::create([
+                'lhp_document_id' => $lhp->id,
+                'role' => 'penyelia',
+                'decision' => 'pending',
+                'note' => 'note',
+                'reviewed_by' => auth()->user()->name,
+            ]);
+
+            return response()->json([
+                'message' => 'Hasil analisis berhasil disimpan',
+                'status' => $lhp->status,
+            ]);
+        });
     }
 }

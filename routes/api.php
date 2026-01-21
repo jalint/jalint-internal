@@ -99,8 +99,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/provinces', [WilayahController::class, 'index']);
     Route::get('/cities/{id}', [WilayahController::class, 'getCity']);
 
+    Route::POST('lhp-documents/{lhp_document}/review', [LhpDocumentController::class, 'review']);
     Route::get('lhp-documents/eligible-offers', [OfferController::class, 'getEligibleOffersForLhp']);
     Route::get('lhp-documents/summary', [LhpDocumentController::class, 'summary']);
+    Route::post('lhp-documents/analysis', [LhpDocumentController::class, 'fillAnalysis']);
     Route::apiResource('lhp-documents', LhpDocumentController::class);
 });
 
