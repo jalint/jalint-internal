@@ -324,7 +324,7 @@ class CustomerOfferController extends Controller
                 foreach ($sampleInput['parameters'] as $param) {
                     $sample->parameters()->create([
                         'test_parameter_id' => $param['test_parameter_id'],
-                        'price' => $param['price'],
+                        'price' => $param['unit_price'],
                         'qty' => $param['qty'],
                         'subkon_id' => 1, // default internal
                     ]);
@@ -560,6 +560,7 @@ class CustomerOfferController extends Controller
                 'expired_date' => $request->expired_date,
                 'request_number' => $request->request_number,
                 'location' => $request->location,
+                'status' => 'in_review',
             ]);
 
             foreach ($request->samples as $sampleInput) {
@@ -570,7 +571,7 @@ class CustomerOfferController extends Controller
                 foreach ($sampleInput['parameters'] as $param) {
                     $sample->parameters()->create([
                         'test_parameter_id' => $param['test_parameter_id'],
-                        'price' => $param['price'],
+                        'price' => $param['unit_price'],
                         'qty' => $param['qty'],
                         'subkon_id' => 1, // default internal
                     ]);

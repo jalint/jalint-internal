@@ -42,7 +42,7 @@ class UserController extends Controller
             'password' => 'required|min:8',
             'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
             'role' => 'required',
-            'status' => 'required|boolean',
+            'status' => 'required|in:0,1',
         ]);
 
         $photoPath = $request->file('photo')->store('users', 'public');
@@ -77,7 +77,7 @@ class UserController extends Controller
             'password' => 'nullable|min:8',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'role' => 'nullable|string',
-            'status' => 'required|boolean',
+            'status' => 'required|in:0,1',
         ]);
 
         if ($request->hasFile('photo')) {

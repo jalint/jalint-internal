@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->foreignId('lhp_document_id')->constrained()->cascadeOnDelete();
             $table->string('identifikasi_laboratorium');
             $table->string('identifikasi_contoh_uji');
-            $table->foreignId('sample_matric_id')->constrained()->restrictOnDelete();
+            $table->foreignId('sample_matrix_id')->constrained()->restrictOnDelete();
             $table->date('tanggal_pengambilan')->nullable();
             $table->date('tanggal_penerimaan')->nullable();
             $table->time('waktu_pengambilan')->nullable();

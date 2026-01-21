@@ -49,7 +49,7 @@ class StoreCustomerOfferRequest extends FormRequest
                 'exists:test_parameters,id',
             ],
 
-            'samples.*.parameters.*.price' => [
+            'samples.*.parameters.*.unit_price' => [
                 'required_with:samples',
                 'numeric',
                 'min:0',
@@ -71,7 +71,7 @@ class StoreCustomerOfferRequest extends FormRequest
         return [
             'samples.*.title' => 'judul contoh uji',
             'samples.*.parameters.*.test_parameter_id' => 'parameter uji',
-            'samples.*.parameters.*.price' => 'harga parameter',
+            'samples.*.parameters.*.unit_price' => 'harga parameter',
             'samples.*.parameters.*.qty' => 'jumlah uji',
         ];
     }
