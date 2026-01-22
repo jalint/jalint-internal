@@ -6,6 +6,7 @@ use App\Http\Requests\StoreLhpDocumentRequest;
 use App\Models\LhpDocument;
 use App\Models\LhpDocumentParameter;
 use App\Models\LhpReview;
+use App\Models\LhpStep;
 use App\Models\Offer;
 use App\Models\OfferSample;
 use App\Queries\LhpVisibility;
@@ -408,6 +409,14 @@ class LhpDocumentController extends Controller
             'note' => 'nullable|string',
         ];
 
+        if ($user->hasRole('admin_input_lhp') && $request->decision != 'rejected') {
+            $rules = array_merge($rules, [
+                'lhp_document_parameters' => 'required|array|min:1',
+                'lhp_document_parameters.*.id' => 'required|exists:lhp_document_parameters,id',
+                'lhp_document_parameters.*.description_results' => 'required',
+            ]);
+        }
+
         $validated = $request->validate($rules);
 
         return DB::transaction(function () use ($validated, $id, $user) {
@@ -417,25 +426,52 @@ class LhpDocumentController extends Controller
 
             $currentReview = $lhpDocument->currentReview;
 
-            if ($lhpDocument->status == 'in_analysis' && $currentReview->role = 'penyelia') {
-                $currentReview->update([
-                    'decision' => $validated['decision'],
-                    'note' => $validated['note'] ?? null,
-                    'reviewer_by' => $user->name,
-                    'reviewed_at' => now(),
-                ]);
-
+            if ($lhpDocument->status == 'in_analysis' && $currentReview->role == 'penyelia') {
                 if ($validated['decision'] == 'approved') {
+                    $lhpDocument->update(['status' => 'in_review']);
+
+                    $currentReview->update([
+                        'decision' => 'approved',
+                        'note' => $validated['note'] ?? null,
+                        'reviewer_by' => $user->name,
+                        'reviewed_at' => now(),
+                    ]);
+
+                    $adminInputLhpStepID = 3;
+
                     LhpReview::create([
                         'lhp_document_id' => $lhpDocument->id,
+                        'lhp_step_id' => $adminInputLhpStepID,
                         'role' => 'admin_input_lhp',
                         'decision' => 'pending',
-                        'note' => '',
                     ]);
 
                     return response()->json(['message' => 'Dokumen LHP berhasil diverifikasi']);
                 }
             }
+
+            if ($currentReview->role == 'admin_input_lhp') {
+                foreach ($validated['lhp_document_parameters'] as $parameter) {
+                    $lhpdp = LhpDocumentParameter::where('id', $parameter['id'])
+                            ->whereHas('LhpDocumentDetail', function ($q) use ($id) {
+                                $q->whereHas('lhp', function ($qq) use ($id) {
+                                    $qq->where('id', $id);
+                                });
+                            })
+                            ->firstOrFail();
+
+                    $lhpdp->update([
+                        'description_results' => $parameter['description_results'],
+                    ]);
+                }
+            }
+
+            $currentReview->update([
+                'decision' => $validated['decision'],
+                'note' => $validated['note'] ?? null,
+                'reviewer_by' => $user->name,
+                'reviewed_at' => now(),
+            ]);
 
             if ($validated['decision'] === 'rejected') {
                 $lhpDocument->update([
@@ -466,25 +502,29 @@ class LhpDocumentController extends Controller
             if (!$currentReview) {
                 abort(400, 'Tidak ada review aktif');
             }
-            // TODO
-            // Tambah LHP Review Step
-            // Done Analis Input,Penyelia Approved|Reject
-            $currentReview->update([
-                'decision' => $validated['decision'],
-                'note' => $validated['note'] ?? null,
-                'reviewer_by' => $user->name,
-                'reviewed_at' => now(),
+
+            $nextStep = LhpStep::where('sequence_order', '>', $currentReview->reviewStep->sequence_order)
+            ->orderBy('sequence_order')
+            ->first();
+
+            if ($nextStep) {
+                LhpReview::create([
+                    'lhp_document_id' => $lhpDocument->id,
+                    'role' => $nextStep->code,
+                    'decision' => 'pending',
+                ]);
+
+                return response()->json([
+                    'message' => 'LHP disetujui, lanjut ke tahap berikutnya',
+                ]);
+            }
+
+            $lhpDocument->update([
+                'status' => 'approved',
             ]);
 
-            // LhpReview::create([
-            //     'lhp_document_id' => $lhpDocument->id,
-            //     'role' => 'analis',
-            //     'decision' => 'pending',
-            //     'note' => '',
-            // ]);
-
             return response()->json([
-                'message' => 'Penawaran disetujui sepenuhnya',
+                'message' => 'LHP disetujui sepenuhnya',
             ]);
         });
     }
@@ -508,26 +548,8 @@ class LhpDocumentController extends Controller
             | VALIDASI STATUS (INI KUNCI)
             |--------------------------------------------------------------------------
             */
-            if (!in_array($lhp->status, ['draft', 'in_analysis'])) {
+            if (!in_array($lhp->status, ['draft', 'in_analysis', 'revised'])) {
                 abort(403, 'LHP tidak dapat diisi pada status saat ini');
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | SET STATUS → in_analysis
-            |--------------------------------------------------------------------------
-            */
-            if ($lhp->status === 'draft') {
-                $lhp->update([
-                    'status' => 'in_analysis',
-                ]);
-
-                LhpReview::create([
-                    'lhp_document_id' => $lhp->id,
-                    'role' => 'penyelia',
-                    'decision' => 'pending',
-                    'note' => '',
-                ]);
             }
 
             /*
@@ -554,11 +576,21 @@ class LhpDocumentController extends Controller
                 }
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | SET STATUS → in_analysis
+            |--------------------------------------------------------------------------
+            */
+            if ($lhp->status === 'draft' && $lhp->status === 'revised') {
+                $lhp->update([
+                    'status' => 'in_analysis',
+                ]);
+            }
+
             LhpReview::create([
                 'lhp_document_id' => $lhp->id,
                 'role' => 'penyelia',
                 'decision' => 'pending',
-                'note' => 'note',
                 'reviewed_by' => auth()->user()->name,
             ]);
 

@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
 
             $table->foreignId('lhp_document_id')->constrained()->cascadeOnDelete();
-
+            $table->foreignId('lhp_step_id')->nullable()->constrained()->noActionOnDelete();
             $table->string('role');
             // analis, penyelia, admin_input, manager_teknis, admin_prelim
 

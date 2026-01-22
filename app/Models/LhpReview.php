@@ -26,6 +26,11 @@ class LhpReview extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function reviewStep()
+    {
+        return $this->belongsTo(LhpStep::class);
+    }
+
     /* =======================
      | HELPERS
      ======================= */
