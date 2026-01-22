@@ -159,7 +159,8 @@ class LhpDocumentController extends Controller
 
         $query = LhpVisibility::forRole($role)
             ->with([
-                'offer:id,offer_number,title',
+                'offer:id,offer_number,title,customer_id',
+                'offer.customer:id,name',
                 'currentReview',
             ])
             ->latest();
