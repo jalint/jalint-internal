@@ -16,22 +16,137 @@ use Illuminate\Support\Facades\DB;
 
 class LhpDocumentController extends Controller
 {
+    // public function summary(Request $request)
+    // {
+    //     $role = auth()->user()
+    //     ->roles()
+    //     ->whereIn('name', [
+    //         'admin_login',
+    //         'analis',
+    //         'penyelia_lab',
+    //         'admin_input_lhp',
+    //         'manager_teknis',
+    //         'admin_premlim',
+    //     ])
+    //     ->value('name');
+
+    //     $base = LhpVisibility::forRole($role)->with('currentReview');
+
+    //     if (!$request->filled('start_date') && !$request->filled('end_date')) {
+    //         $base->whereBetween('created_at', [
+    //             now()->startOfMonth(),
+    //             now()->endOfMonth(),
+    //         ]);
+    //     }
+
+    //     if ($request->filled('start_date')) {
+    //         $base->whereDate('created_at', '>=', $request->start_date);
+    //     }
+
+    //     if ($request->filled('end_date')) {
+    //         $base->whereDate('created_at', '<=', $request->end_date);
+    //     }
+
+    //     $summary = [];
+    //     $summary['all'] = (clone $base)->count();
+
+    //     switch ($role) {
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | ADMIN PENAWARAN
+    //         |--------------------------------------------------------------------------
+    //         */
+    //         case 'admin_login':
+    //             $summary['menunggu_verif_lhp'] = (clone $base)
+    //                 ->where('status', 'draft')
+    //                 ->count();
+
+    //             $summary['cek_analisis_hasil'] = (clone $base)
+    //                 ->whereIn('status', ['in_review', 'in_analysis'])
+    //                 ->count();
+
+    //             // ✅ Cek Pembayaran Pelanggan (pending ONLY)
+    //             $summary['lhp_disetujui'] = (clone $base)
+    //              ->where('status', 'validated')
+    //                 ->count();
+    //             break;
+
+    //         case 'analis':
+    //             $summary['analisa_data'] = (clone $base)->where('status', 'draft')->count();
+    //             $summary['lhp_telah_diisi'] = (clone $base)->where('status', 'in_analysis')->count();
+    //             $summary['revisi_lhp'] = (clone $base)->where('status', 'revised')->count();
+    //             break;
+
+    //         case 'penyelia_lab':
+    //             $summary['verifikasi_lhp'] = (clone $base)->where('status', 'in_analysis')->count();
+    //             $summary['lhp_terverifikasi'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'penyelia_lab')
+    //             )
+    //             ->count();
+    //             $summary['review_revisi'] = (clone $base)->where('status', 'revised')
+    //             ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
+    //             )->count();
+
+    //             break;
+    //         case 'admin_input_lhp':
+    //             $summary['cek_lhp'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_input_lhp')
+    //             )
+    //             ->count();
+
+    //             $summary['hasil_selesai_dicek'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_input_lhp')
+    //             )
+    //             ->count();
+    //             $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
+    //             ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
+    //             )->count();
+    //             break;
+    //         case 'manager_teknis':
+    //             $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('currentReview', fn ($q) => $q->where('role', 'manager_teknis')
+    //             )
+    //             ->count();
+
+    //             $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
+    //             )
+    //             ->count();
+
+    //             $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
+    //             ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
+    //             )->count();
+
+    //             break;
+
+    //         case 'admin_premlim':
+    //             $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
+    //             )
+    //             ->count();
+
+    //             $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
+    //             ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
+    //             )
+    //             ->count();
+
+    //             $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
+    //             ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
+    //             )->count();
+
+    //             break;
+    //     }
+
+    //     return response()->json($summary);
+    // }
+
     public function summary(Request $request)
     {
-        $role = auth()->user()
-        ->roles()
-        ->whereIn('name', [
-            'admin_login',
-            'analis',
-            'penyelia_lab',
-            'admin_input_lhp',
-            'manager_teknis',
-            'admin_premlim',
-        ])
-        ->value('name');
+        $role = auth()->user()->roles()->value('name');
 
-        $base = LhpVisibility::forRole($role)->with('currentReview');
+        $base = LhpVisibility::forRole($role);
 
+        // default bulan berjalan
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
             $base->whereBetween('created_at', [
                 now()->startOfMonth(),
@@ -47,114 +162,271 @@ class LhpDocumentController extends Controller
             $base->whereDate('created_at', '<=', $request->end_date);
         }
 
-        $summary = [];
         $summary['all'] = (clone $base)->count();
 
         switch ($role) {
-            /*
-            |--------------------------------------------------------------------------
-            | ADMIN PENAWARAN
-            |--------------------------------------------------------------------------
-            */
             case 'admin_login':
-                $summary['menunggu_verif_lhp'] = (clone $base)
-                    ->where('status', 'draft')
-                    ->count();
+                $summary['menunggu_verif_lhp'] =
+                    (clone $base)->where('status', 'draft')->count();
 
-                $summary['cek_analisis_hasil'] = (clone $base)
-                    ->whereIn('status', ['in_review', 'in_analysis'])
-                    ->count();
+                $summary['cek_analisis_hasil'] =
+                    (clone $base)->where('status', 'in_review')->count();
 
-                // ✅ Cek Pembayaran Pelanggan (pending ONLY)
-                $summary['lhp_disetujui'] = (clone $base)
-                 ->where('status', 'validated')
-                    ->count();
+                $summary['lhp_disetujui'] =
+                    (clone $base)->where('status', 'validated')->count();
                 break;
 
             case 'analis':
-                $summary['analisa_data'] = (clone $base)->where('status', 'draft')->count();
-                $summary['lhp_telah_diisi'] = (clone $base)->where('status', 'in_analysis')->count();
-                $summary['revisi_lhp'] = (clone $base)->where('status', 'revised')->count();
+                $summary['analisa_data'] =
+                    (clone $base)->where('status', 'draft')->count();
+
+                $summary['lhp_telah_diisi'] =
+                    (clone $base)->where('status', 'in_analysis')->count();
+
+                $summary['revisi_lhp'] =
+                    (clone $base)->where('status', 'revised')->count();
                 break;
 
             case 'penyelia_lab':
-                $summary['verifikasi_lhp'] = (clone $base)->where('status', 'in_analysis')->count();
-                $summary['lhp_terverifikasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
-                )
-                ->count();
-                $summary['review_revisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
-                )->count();
+                $summary['verifikasi_lhp'] =
+                    (clone $base)
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview', fn ($q) => $q->where('role', 'penyelia_lab')
+                        )
+                        ->count();
 
+                $summary['lhp_terverifikasi'] =
+                    (clone $base)->where('status', 'validated')->count();
+
+                $summary['review_revisi'] =
+                    (clone $base)
+                        ->where('status', 'revised')
+                        ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
+                        )
+                        ->count();
                 break;
+
             case 'admin_input_lhp':
-                $summary['cek_lhp'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_input_lhp')
-                )
-                ->count();
+                $summary['cek_lhp'] =
+                    (clone $base)
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_input_lhp')
+                        )
+                        ->count();
 
-                $summary['hasil_selesai_dicek'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
-                )
-                ->count();
-                $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
-                )->count();
+                $summary['hasil_selesai_dicek'] =
+                    (clone $base)->where('status', 'validated')->count();
+
+                $summary['lhp_direvisi'] =
+                    (clone $base)->where('status', 'revised')->count();
                 break;
+
             case 'manager_teknis':
-                $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('currentReview', fn ($q) => $q->where('role', 'manager_teknis')
-                )
-                ->count();
-
-                $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
-                )
-                ->count();
-
-                $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
-                )->count();
-
-                break;
-
             case 'admin_premlim':
-                $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
-                )
-                ->count();
+                $summary['validasi_lhp'] =
+                    (clone $base)
+                        ->where('status', 'in_review')
+                        ->whereHas('currentReview', fn ($q) => $q->where('role', $role)
+                        )
+                        ->count();
 
-                $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
-                )
-                ->count();
+                $summary['lhp_tervalidasi'] =
+                    (clone $base)->where('status', 'validated')->count();
 
-                $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
-                )->count();
-
+                $summary['lhp_direvisi'] =
+                    (clone $base)->where('status', 'revised')->count();
                 break;
         }
 
         return response()->json($summary);
     }
 
+    // public function index(Request $request)
+    // {
+    //     $role = auth()->user()
+    //         ->roles()
+    //         ->whereIn('name', [
+    //             'admin_login',
+    //             'analis',
+    //             'penyelia_lab',
+    //             'admin_input_lhp',
+    //             'manager_teknis',
+    //             'admin_premlim',
+    //         ])
+    //         ->value('name');
+
+    //     $filter = $request->query('filter'); // key summary
+    //     $search = $request->query('search');
+
+    //     $query = LhpVisibility::forRole($role)
+    //         ->with([
+    //             'offer:id,offer_number,title,customer_id',
+    //             'offer.customer:id,name',
+    //             'currentReview',
+    //         ])
+    //         ->latest();
+
+    //     /*
+    //     |--------------------------------------------------------------------------
+    //     | DEFAULT: BULAN BERJALAN
+    //     |--------------------------------------------------------------------------
+    //     */
+    //     if (!$request->filled('start_date') && !$request->filled('end_date')) {
+    //         $query->whereBetween('created_at', [
+    //             now()->startOfMonth(),
+    //             now()->endOfMonth(),
+    //         ]);
+    //     }
+
+    //     if ($request->filled('start_date')) {
+    //         $query->whereDate('created_at', '>=', $request->start_date);
+    //     }
+
+    //     if ($request->filled('end_date')) {
+    //         $query->whereDate('created_at', '<=', $request->end_date);
+    //     }
+
+    //     /*
+    //     |--------------------------------------------------------------------------
+    //     | SEARCH
+    //     |--------------------------------------------------------------------------
+    //     */
+    //     if ($search) {
+    //         $query->where(function ($q) use ($search) {
+    //             $q->where('job_number', 'like', "%{$search}%")
+    //               ->orWhereHas('offer', fn ($o) => $o->where('offer_number', 'like', "%{$search}%")
+    //                       ->orWhere('title', 'like', "%{$search}%")
+    //               );
+    //         });
+    //     }
+
+    //     /*
+    //     |--------------------------------------------------------------------------
+    //     | FILTER PER ROLE (SAMA PERSIS DENGAN SUMMARY)
+    //     |--------------------------------------------------------------------------
+    //     */
+    //     switch ($role) {
+    //         /* ================= ADMIN PENAWARAN ================= */
+    //         case 'admin_login':
+    //             match ($filter) {
+    //                 'menunggu_verif_lhp' => $query->where('status', 'draft'),
+
+    //                 'cek_analisis_hasil' => $query->whereIn('status', ['in_review', 'in_analysis']),
+
+    //                 'lhp_disetujui' => $query->where('status', 'validated'),
+
+    //                 default => null
+    //             };
+    //             break;
+
+    //             /* ================= ANALIS ================= */
+    //         case 'analis':
+    //             match ($filter) {
+    //                 'analisa_data' => $query->where('status', 'draft'),
+
+    //                 'lhp_telah_diisi' => $query->where('status', 'in_analysis'),
+
+    //                 'revisi_lhp' => $query->where('status', 'revised'),
+
+    //                 default => null
+    //             };
+    //             break;
+
+    //             /* ================= PENYELIA ================= */
+    //         case 'penyelia_lab':
+    //             match ($filter) {
+    //                 'verifikasi_lhp' => $query->where('status', 'in_analysis'),
+
+    //                 'lhp_terverifikasi' => $query->where('status', 'in_review')
+    //                         ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
+    //                         ),
+
+    //                 'review_revisi' => $query->where('status', 'revised')
+    //                         ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
+    //                         ),
+
+    //                 default => null
+    //             };
+    //             break;
+
+    //             /* ================= ADMIN INPUT LHP ================= */
+    //         case 'admin_input_lhp':
+    //             match ($filter) {
+    //                 'cek_lhp' => $query->where('status', 'in_review')
+    //                         ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_input_lhp')
+    //                         ),
+
+    //                 'hasil_selesai_dicek' => $query->where('status', 'in_review')
+    //                         ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
+    //                         ),
+
+    //                 'lhp_direvisi' => $query->where('status', 'revised')
+    //                         ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
+    //                         ),
+
+    //                 default => null
+    //             };
+    //             break;
+
+    //             /* ================= MANAGER TEKNIS ================= */
+    //         case 'manager_teknis':
+    //             match ($filter) {
+    //                 'validasi_lhp' => $query->where('status', 'in_review')
+    //                         ->whereHas('currentReview', fn ($q) => $q->where('role', 'manager_teknis')
+    //                         ),
+
+    //                 'lhp_tervalidasi' => $query->where('status', 'in_review')
+    //                         ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
+    //                         ),
+
+    //                 'lhp_direvisi' => $query->where('status', 'revised')
+    //                         ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
+    //                         ),
+
+    //                 default => null
+    //             };
+    //             break;
+
+    //             /* ================= ADMIN PREMLIM ================= */
+    //         case 'admin_premlim':
+    //             match ($filter) {
+    //                 'validasi_lhp' => $query->where('status', 'in_review')
+    //                         ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
+    //                         ),
+
+    //                 'lhp_tervalidasi' => $query->where('status', 'in_review')
+    //                         ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
+    //                         ),
+
+    //                 'lhp_direvisi' => $query->where('status', 'revised')
+    //                         ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
+    //                         ),
+
+    //                 default => null
+    //             };
+    //             break;
+    //     }
+
+    //     $lhps = $query->paginate($request->per_page ?? 15);
+
+    //     /*
+    //     |--------------------------------------------------------------------------
+    //     | DISPLAY STATUS (SESUI SUMMARY)
+    //     |--------------------------------------------------------------------------
+    //     */
+    //     $lhps->getCollection()->transform(function ($lhp) use ($role) {
+    //         $lhp->display_status = LhpDisplayStatus::resolve($lhp, $role);
+
+    //         return $lhp;
+    //     });
+
+    //     return response()->json($lhps);
+    // }
+
     public function index(Request $request)
     {
-        $role = auth()->user()
-            ->roles()
-            ->whereIn('name', [
-                'admin_login',
-                'analis',
-                'penyelia_lab',
-                'admin_input_lhp',
-                'manager_teknis',
-                'admin_premlim',
-            ])
-            ->value('name');
-
-        $filter = $request->query('filter'); // key summary
+        $role = auth()->user()->roles()->value('name');
+        $filter = $request->query('filter');
         $search = $request->query('search');
 
         $query = LhpVisibility::forRole($role)
@@ -165,11 +437,7 @@ class LhpDocumentController extends Controller
             ])
             ->latest();
 
-        /*
-        |--------------------------------------------------------------------------
-        | DEFAULT: BULAN BERJALAN
-        |--------------------------------------------------------------------------
-        */
+        // default bulan berjalan
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
             $query->whereBetween('created_at', [
                 now()->startOfMonth(),
@@ -185,11 +453,7 @@ class LhpDocumentController extends Controller
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | SEARCH
-        |--------------------------------------------------------------------------
-        */
+        // search
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('job_number', 'like', "%{$search}%")
@@ -199,120 +463,47 @@ class LhpDocumentController extends Controller
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER PER ROLE (SAMA PERSIS DENGAN SUMMARY)
-        |--------------------------------------------------------------------------
-        */
-        switch ($role) {
-            /* ================= ADMIN PENAWARAN ================= */
-            case 'admin_login':
-                match ($filter) {
-                    'menunggu_verif_lhp' => $query->where('status', 'draft'),
-
-                    'cek_analisis_hasil' => $query->whereIn('status', ['in_review', 'in_analysis']),
-
-                    'lhp_disetujui' => $query->where('status', 'validated'),
-
-                    default => null
-                };
+        // filter = summary key
+        switch ($filter) {
+            case 'menunggu_verif_lhp':
+                $query->where('status', 'draft');
                 break;
 
-                /* ================= ANALIS ================= */
-            case 'analis':
-                match ($filter) {
-                    'analisa_data' => $query->where('status', 'draft'),
-
-                    'lhp_telah_diisi' => $query->where('status', 'in_analysis'),
-
-                    'revisi_lhp' => $query->where('status', 'revised'),
-
-                    default => null
-                };
+            case 'cek_analisis_hasil':
+                $query->where('status', 'in_review');
                 break;
 
-                /* ================= PENYELIA ================= */
-            case 'penyelia_lab':
-                match ($filter) {
-                    'verifikasi_lhp' => $query->where('status', 'in_analysis'),
-
-                    'lhp_terverifikasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
-                            ),
-
-                    'review_revisi' => $query->where('status', 'revised')
-                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
-                            ),
-
-                    default => null
-                };
+            case 'lhp_disetujui':
+            case 'lhp_terverifikasi':
+            case 'lhp_tervalidasi':
+            case 'hasil_selesai_dicek':
+                $query->where('status', 'validated');
                 break;
 
-                /* ================= ADMIN INPUT LHP ================= */
-            case 'admin_input_lhp':
-                match ($filter) {
-                    'cek_lhp' => $query->where('status', 'in_review')
-                            ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_input_lhp')
-                            ),
-
-                    'hasil_selesai_dicek' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
-                            ),
-
-                    'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
-                            ),
-
-                    default => null
-                };
+            case 'analisa_data':
+                $query->where('status', 'draft');
                 break;
 
-                /* ================= MANAGER TEKNIS ================= */
-            case 'manager_teknis':
-                match ($filter) {
-                    'validasi_lhp' => $query->where('status', 'in_review')
-                            ->whereHas('currentReview', fn ($q) => $q->where('role', 'manager_teknis')
-                            ),
-
-                    'lhp_tervalidasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
-                            ),
-
-                    'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
-                            ),
-
-                    default => null
-                };
+            case 'lhp_telah_diisi':
+                $query->where('status', 'in_analysis');
                 break;
 
-                /* ================= ADMIN PREMLIM ================= */
-            case 'admin_premlim':
-                match ($filter) {
-                    'validasi_lhp' => $query->where('status', 'in_review')
-                            ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
-                            ),
+            case 'verifikasi_lhp':
+            case 'validasi_lhp':
+                $query->where('status', 'in_review')
+                      ->whereHas('currentReview', fn ($q) => $q->where('role', $role)
+                      );
+                break;
 
-                    'lhp_tervalidasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
-                            ),
-
-                    'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
-                            ),
-
-                    default => null
-                };
+            case 'review_revisi':
+            case 'lhp_direvisi':
+            case 'revisi_lhp':
+                $query->where('status', 'revised');
                 break;
         }
 
         $lhps = $query->paginate($request->per_page ?? 15);
 
-        /*
-        |--------------------------------------------------------------------------
-        | DISPLAY STATUS (SESUI SUMMARY)
-        |--------------------------------------------------------------------------
-        */
         $lhps->getCollection()->transform(function ($lhp) use ($role) {
             $lhp->display_status = LhpDisplayStatus::resolve($lhp, $role);
 
