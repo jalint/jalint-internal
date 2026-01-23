@@ -34,6 +34,13 @@ class LhpDocument extends Model
             ->where('decision', 'pending');
     }
 
+    public function latestRevisedReview()
+    {
+        return $this->hasOne(LhpReview::class)
+            ->where('decision', 'revised')
+            ->latestOfMany();
+    }
+
     /* =======================
      | WORKFLOW HELPERS
      ======================= */

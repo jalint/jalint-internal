@@ -21,9 +21,9 @@ class LhpDocumentController extends Controller
         $role = auth()->user()
         ->roles()
         ->whereIn('name', [
-            'admin_penawaran',
+            'admin_login',
             'analis',
-            'penyelia',
+            'penyelia_lab',
             'admin_input_lhp',
             'manager_teknis',
             'admin_premlim',
@@ -56,7 +56,7 @@ class LhpDocumentController extends Controller
             | ADMIN PENAWARAN
             |--------------------------------------------------------------------------
             */
-            case 'admin_penawaran':
+            case 'admin_login':
                 $summary['menunggu_verif_lhp'] = (clone $base)
                     ->where('status', 'draft')
                     ->count();
@@ -77,14 +77,14 @@ class LhpDocumentController extends Controller
                 $summary['revisi_lhp'] = (clone $base)->where('status', 'revised')->count();
                 break;
 
-            case 'penyelia':
+            case 'penyelia_lab':
                 $summary['verifikasi_lhp'] = (clone $base)->where('status', 'in_analysis')->count();
                 $summary['lhp_terverifikasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'analis')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
                 )
                 ->count();
                 $summary['review_revisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('status', 'pending')->where('role', 'analis')
+                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'penyelia_lab')
                 )->count();
 
                 break;
@@ -95,11 +95,11 @@ class LhpDocumentController extends Controller
                 ->count();
 
                 $summary['hasil_selesai_dicek'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'analis')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
                 )
                 ->count();
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'admin_input_lhp')
+                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_input_lhp')
                 )->count();
                 break;
             case 'manager_teknis':
@@ -109,12 +109,12 @@ class LhpDocumentController extends Controller
                 ->count();
 
                 $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'manager_teknis')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
                 )
                 ->count();
 
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'manager_teknis')
+                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'manager_teknis')
                 )->count();
 
                 break;
@@ -126,12 +126,12 @@ class LhpDocumentController extends Controller
                 ->count();
 
                 $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'admin_premlin')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlin')
                 )
                 ->count();
 
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'admin_premlin')
+                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_premlin')
                 )->count();
 
                 break;
@@ -145,9 +145,9 @@ class LhpDocumentController extends Controller
         $role = auth()->user()
             ->roles()
             ->whereIn('name', [
-                'admin_penawaran',
+                'admin_login',
                 'analis',
-                'penyelia',
+                'penyelia_lab',
                 'admin_input_lhp',
                 'manager_teknis',
                 'admin_premlim',
@@ -206,7 +206,7 @@ class LhpDocumentController extends Controller
         */
         switch ($role) {
             /* ================= ADMIN PENAWARAN ================= */
-            case 'admin_penawaran':
+            case 'admin_login':
                 match ($filter) {
                     'menunggu_verif_lhp' => $query->where('status', 'draft'),
 
@@ -232,16 +232,16 @@ class LhpDocumentController extends Controller
                 break;
 
                 /* ================= PENYELIA ================= */
-            case 'penyelia':
+            case 'penyelia_lab':
                 match ($filter) {
                     'verifikasi_lhp' => $query->where('status', 'in_analysis'),
 
                     'lhp_terverifikasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'analis')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
                             ),
 
                     'review_revisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('status', 'pending')->where('role', 'analis')
+                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'penyelia_lab')
                             ),
 
                     default => null
@@ -256,11 +256,11 @@ class LhpDocumentController extends Controller
                             ),
 
                     'hasil_selesai_dicek' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'analis')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'admin_input_lhp')
+                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_input_lhp')
                             ),
 
                     default => null
@@ -275,11 +275,11 @@ class LhpDocumentController extends Controller
                             ),
 
                     'lhp_tervalidasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'manager_teknis')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'manager_teknis')
+                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'manager_teknis')
                             ),
 
                     default => null
@@ -294,11 +294,11 @@ class LhpDocumentController extends Controller
                             ),
 
                     'lhp_tervalidasi' => $query->where('status', 'in_review')
-                            ->whereHas('reviews', fn ($q) => $q->where('status', 'approved')->where('role', 'admin_premlim')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('status', 'revised')->where('role', 'admin_premlim')
+                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_premlim')
                             ),
 
                     default => null
@@ -406,11 +406,11 @@ class LhpDocumentController extends Controller
         $user = auth()->user();
 
         $rules = [
-            'decision' => 'required|in:approved,rejected',
+            'decision' => 'required|in:approved,revised',
             'note' => 'nullable|string',
         ];
 
-        if ($user->hasRole('admin_input_lhp') && $request->decision != 'rejected') {
+        if ($user->hasRole('admin_input_lhp') && $request->decision != 'revised') {
             $rules = array_merge($rules, [
                 'lhp_document_parameters' => 'required|array|min:1',
                 'lhp_document_parameters.*.id' => 'required|exists:lhp_document_parameters,id',
@@ -427,14 +427,14 @@ class LhpDocumentController extends Controller
 
             $currentReview = $lhpDocument->currentReview;
 
-            if ($lhpDocument->status == 'in_analysis' && $currentReview->role == 'penyelia') {
+            if ($lhpDocument->status == 'in_analysis' && $currentReview->role == 'penyelia_lab') {
                 if ($validated['decision'] == 'approved') {
                     $lhpDocument->update(['status' => 'in_review']);
 
                     $currentReview->update([
                         'decision' => 'approved',
                         'note' => $validated['note'] ?? null,
-                        'reviewer_by' => $user->name,
+                        'reviewed_by' => $user->name,
                         'reviewed_at' => now(),
                     ]);
 
@@ -470,20 +470,13 @@ class LhpDocumentController extends Controller
             $currentReview->update([
                 'decision' => $validated['decision'],
                 'note' => $validated['note'] ?? null,
-                'reviewer_by' => $user->name,
+                'reviewed_by' => $user->name,
                 'reviewed_at' => now(),
             ]);
 
-            if ($validated['decision'] === 'rejected') {
+            if ($validated['decision'] === 'revised') {
                 $lhpDocument->update([
-                    'status' => 'revisied',
-                ]);
-
-                LhpReview::create([
-                    'lhp_document_id' => $lhpDocument->id,
-                    'role' => 'analis',
-                    'decision' => 'pending',
-                    'note' => '',
+                    'status' => 'revised',
                 ]);
 
                 return response()->json([
@@ -511,6 +504,7 @@ class LhpDocumentController extends Controller
             if ($nextStep) {
                 LhpReview::create([
                     'lhp_document_id' => $lhpDocument->id,
+                    'lhp_step_id' => $nextStep->id,
                     'role' => $nextStep->code,
                     'decision' => 'pending',
                 ]);
@@ -582,7 +576,7 @@ class LhpDocumentController extends Controller
             | SET STATUS → in_analysis
             |--------------------------------------------------------------------------
             */
-            if ($lhp->status === 'draft' && $lhp->status === 'revised') {
+            if ($lhp->status === 'draft' || $lhp->status === 'revised') {
                 $lhp->update([
                     'status' => 'in_analysis',
                 ]);
@@ -590,8 +584,9 @@ class LhpDocumentController extends Controller
 
             LhpReview::create([
                 'lhp_document_id' => $lhp->id,
-                'role' => 'penyelia',
-                'decision' => 'pending',
+                'role' => 'penyelia_lab',
+                'lhp_step_id' => 2,
+                'decision' => 'approved',
                 'reviewed_by' => auth()->user()->name,
             ]);
 

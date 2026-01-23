@@ -12,7 +12,7 @@ class LhpDisplayStatus
             /* =====================================================
              | ADMIN PENAWARAN
              ===================================================== */
-            'admin_penawaran' => match (true) {
+            'admin_login' => match (true) {
                 $lhp->status === 'draft' => 'Menunggu Verifikasi LHP',
 
                 in_array($lhp->status, ['in_review', 'in_analysis']) => 'Cek Hasil Analisis',
@@ -38,17 +38,17 @@ class LhpDisplayStatus
             /* =====================================================
              | PENYELIA
              ===================================================== */
-            'penyelia' => match (true) {
+            'penyelia_lab' => match (true) {
                 $lhp->status === 'in_analysis' => 'Verifikasi LHP',
 
                 $lhp->status === 'in_review'
                 && $lhp->reviews()
-                    ->where('status', 'approved')
+                    ->where('decision', 'approved')
                     ->where('role', 'analis')
                     ->exists() => 'LHP Terverifikasi',
 
                 $lhp->status === 'revised'
-                && $lhp->currentReview?->role === 'analis' => 'Review Revisi',
+                && $lhp->latestRevisedReview?->role === 'penyelia_lab' => 'Review Revisi',
 
                 default => 'Tidak Diketahui',
             },
@@ -62,12 +62,12 @@ class LhpDisplayStatus
 
                 $lhp->status === 'in_review'
                 && $lhp->reviews()
-                    ->where('status', 'approved')
+                    ->where('decision', 'approved')
                     ->where('role', 'analis')
                     ->exists() => 'Hasil Selesai Dicek',
 
                 $lhp->status === 'revised'
-                && $lhp->currentReview?->role === 'admin_input_lhp' => 'LHP Direvisi',
+                && $lhp->latestRevisedReview?->role === 'admin_input_lhp' => 'LHP Direvisi',
 
                 default => 'Tidak Diketahui',
             },
@@ -81,12 +81,12 @@ class LhpDisplayStatus
 
                 $lhp->status === 'in_review'
                 && $lhp->reviews()
-                    ->where('status', 'approved')
+                    ->where('decision', 'approved')
                     ->where('role', 'manager_teknis')
                     ->exists() => 'LHP Tervalidasi',
 
                 $lhp->status === 'revised'
-                && $lhp->currentReview?->role === 'manager_teknis' => 'LHP Direvisi',
+                && $lhp->latestRevisedReview?->role === 'manager_teknis' => 'LHP Direvisi',
 
                 default => 'Tidak Diketahui',
             },
@@ -100,12 +100,12 @@ class LhpDisplayStatus
 
                 $lhp->status === 'in_review'
                 && $lhp->reviews()
-                    ->where('status', 'approved')
+                    ->where('decision', 'approved')
                     ->where('role', 'admin_premlim')
                     ->exists() => 'LHP Tervalidasi',
 
                 $lhp->status === 'revised'
-                && $lhp->currentReview?->role === 'admin_premlim' => 'LHP Direvisi',
+                && $lhp->latestRevisedReview?->role === 'admin_premlim' => 'LHP Direvisi',
 
                 default => 'Tidak Diketahui',
             },

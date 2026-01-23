@@ -9,9 +9,9 @@ class LhpVisibility
     public static function forRole(string $role)
     {
         return match ($role) {
-            'admin_penawaran' => self::adminPenawaran(),
+            'admin_login' => self::admin_login(),
             'analis' => self::analis(),
-            'penyelia' => self::penyelia(),
+            'penyelia_lab' => self::penyelia_lab(),
             'admin_input_lhp' => self::admin_input_lhp(),
             'manager_teknis' => self::manager_teknis(),
             'admin_premlim' => self::admin_premlim(),
@@ -19,7 +19,7 @@ class LhpVisibility
         };
     }
 
-    private static function adminPenawaran()
+    private static function admin_login()
     {
         return LhpDocument::query();
     }
@@ -29,7 +29,7 @@ class LhpVisibility
         return LhpDocument::query();
     }
 
-    private static function penyelia()
+    private static function penyelia_lab()
     {
         return LhpDocument::query();
     }

@@ -28,7 +28,7 @@ class LhpReview extends Model
 
     public function reviewStep()
     {
-        return $this->belongsTo(LhpStep::class);
+        return $this->belongsTo(LhpStep::class, 'lhp_step_id');
     }
 
     /* =======================
