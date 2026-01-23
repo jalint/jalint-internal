@@ -26,26 +26,46 @@ class LhpVisibility
 
     private static function analis()
     {
-        return LhpDocument::query();
+        return LhpDocument::query()->whereIn('status', ['draft', 'in_analysis', 'revised']);
     }
 
     private static function penyelia_lab()
     {
-        return LhpDocument::query();
+        return LhpDocument::query()->whereIn('status', ['in_review', 'in_analysis', 'revised'])
+                 ->whereHas('reviews.reviewStep', function ($q) {
+                     $q->whereIn('code', [
+                         'admin_input_lhp',
+                     ]);
+                 });
     }
 
     private static function admin_input_lhp()
     {
-        return LhpDocument::query();
+        return LhpDocument::query()->whereIn('status', ['in_review', 'revised'])
+                ->whereHas('reviews.reviewStep', function ($q) {
+                    $q->whereIn('code', [
+                        'admin_input_lhp',
+                    ]);
+                });
     }
 
     private static function manager_teknis()
     {
-        return LhpDocument::query();
+        return LhpDocument::query()->whereIn('status', ['in_review', 'revised'])
+        ->whereHas('reviews.reviewStep', function ($q) {
+            $q->whereIn('code', [
+                'manager_teknis',
+            ]);
+        });
     }
 
     private static function admin_premlim()
     {
-        return LhpDocument::query();
+        return LhpDocument::query()->whereIn('status', ['in_review', 'revised'])
+        ->whereHas('reviews.reviewStep', function ($q) {
+            $q->whereIn('code', [
+                'admin_premlim',
+            ]);
+        });
     }
 }

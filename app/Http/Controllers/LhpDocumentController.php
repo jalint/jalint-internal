@@ -84,7 +84,7 @@ class LhpDocumentController extends Controller
                 )
                 ->count();
                 $summary['review_revisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'penyelia_lab')
+                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
                 )->count();
 
                 break;
@@ -99,7 +99,7 @@ class LhpDocumentController extends Controller
                 )
                 ->count();
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_input_lhp')
+                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
                 )->count();
                 break;
             case 'manager_teknis':
@@ -114,24 +114,24 @@ class LhpDocumentController extends Controller
                 ->count();
 
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'manager_teknis')
+                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
                 )->count();
 
                 break;
 
-            case 'admin_premlin':
+            case 'admin_premlim':
                 $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlin')
+                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
                 )
                 ->count();
 
                 $summary['lhp_tervalidasi'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlin')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
                 )
                 ->count();
 
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_premlin')
+                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
                 )->count();
 
                 break;
@@ -241,7 +241,7 @@ class LhpDocumentController extends Controller
                             ),
 
                     'review_revisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'penyelia_lab')
+                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'penyelia_lab')
                             ),
 
                     default => null
@@ -260,7 +260,7 @@ class LhpDocumentController extends Controller
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_input_lhp')
+                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_input_lhp')
                             ),
 
                     default => null
@@ -279,7 +279,7 @@ class LhpDocumentController extends Controller
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'manager_teknis')
+                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'manager_teknis')
                             ),
 
                     default => null
@@ -298,7 +298,7 @@ class LhpDocumentController extends Controller
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('currentReview', fn ($q) => $q->where('decision', 'revised')->where('role', 'admin_premlim')
+                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
                             ),
 
                     default => null
