@@ -11,8 +11,8 @@ class LhpVisibility
         return match ($role) {
             'admin_login' => self::adminLogin(),
             'analis' => self::analis(),
-            'penyelia_lab' => self::penyelia(),
-            'admin_input_lhp' => self::adminInput(),
+            'penyelia_lab' => self::penyeliaLab(),
+            'admin_input_lhp' => self::adminInputLHP(),
             'manager_teknis' => self::managerTeknis(),
             'admin_premlim' => self::adminPremlim(),
             default => LhpDocument::query()->whereRaw('1=0'),
@@ -30,35 +30,69 @@ class LhpVisibility
             ->whereIn('status', ['draft', 'in_analysis', 'revised']);
     }
 
-    private static function penyelia()
+    private static function penyeliaLab()
     {
         return LhpDocument::query()
-            ->whereIn('status', ['in_review', 'revised'])
-            ->whereHas('reviews.reviewStep', fn ($q) => $q->where('code', 'analis')
-            );
+            ->where(function ($q) {
+                // 1️⃣ Sedang menunggu aksi penyelia
+                $q->where('status', 'in_review')
+                  ->whereHas('currentReview', fn ($qr) => $qr->where('role', 'penyelia_lab')
+                  );
+
+                // 2️⃣ Revisi yang benar-benar dibuat oleh penyelia
+                $q->orWhere(function ($qr) {
+                    $qr->where('status', 'revised')
+                       ->whereHas('latestRevisedReview', fn ($qrr) => $qrr->where('role', 'penyelia_lab')
+                       );
+                });
+            });
     }
 
-    private static function adminInput()
+    private static function adminInputLHP()
     {
         return LhpDocument::query()
-            ->whereIn('status', ['in_review', 'revised'])
-            ->whereHas('reviews.reviewStep', fn ($q) => $q->where('code', 'admin_input_lhp')
-            );
+                ->where(function ($q) {
+                    $q->where('status', 'in_review')
+                      ->whereHas('currentReview', fn ($qr) => $qr->where('role', 'admin_input_lhp')
+                      );
+
+                    $q->orWhere(function ($qr) {
+                        $qr->where('status', 'revised')
+                           ->whereHas('latestRevisedReview', fn ($qrr) => $qrr->where('role', 'admin_input_lhp')
+                           );
+                    });
+                });
     }
 
     private static function managerTeknis()
     {
         return LhpDocument::query()
-            ->whereIn('status', ['in_review', 'revised'])
-            ->whereHas('reviews.reviewStep', fn ($q) => $q->where('code', 'manager_teknis')
-            );
+           ->where(function ($q) {
+               $q->where('status', 'in_review')
+                 ->whereHas('currentReview', fn ($qr) => $qr->where('role', 'manager_teknis')
+                 );
+
+               $q->orWhere(function ($qr) {
+                   $qr->where('status', 'revised')
+                      ->whereHas('latestRevisedReview', fn ($qrr) => $qrr->where('role', 'manager_teknis')
+                      );
+               });
+           });
     }
 
     private static function adminPremlim()
     {
         return LhpDocument::query()
-            ->whereIn('status', ['in_review', 'revised'])
-            ->whereHas('reviews.reviewStep', fn ($q) => $q->where('code', 'admin_premlim')
-            );
+               ->where(function ($q) {
+                   $q->where('status', 'in_review')
+                     ->whereHas('currentReview', fn ($qr) => $qr->where('role', 'admin_premlim')
+                     );
+
+                   $q->orWhere(function ($qr) {
+                       $qr->where('status', 'revised')
+                          ->whereHas('latestRevisedReview', fn ($qrr) => $qrr->where('role', 'admin_premlim')
+                          );
+                   });
+               });
     }
 }

@@ -15,7 +15,7 @@ class LhpDisplayStatus
             'admin_login' => match (true) {
                 $lhp->status === 'draft' => 'Menunggu Verifikasi LHP',
 
-                in_array($lhp->status, ['in_review', 'in_analysis']) => 'Cek Hasil Analisis',
+                in_array($lhp->status, ['in_review', 'in_analysis', 'revised']) => 'Cek Hasil Analisis',
 
                 $lhp->status === 'validated' => 'LHP Disetujui',
 
