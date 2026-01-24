@@ -41,7 +41,7 @@ class LhpDisplayStatus
             'penyelia_lab' => match (true) {
                 $lhp->status === 'in_analysis' => 'Verifikasi LHP',
 
-                $lhp->status === 'in_review'
+                $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
                     ->where('role', 'analis')
@@ -60,7 +60,7 @@ class LhpDisplayStatus
                 $lhp->status === 'in_review'
                 && $lhp->currentReview?->role === 'admin_input_lhp' => 'Cek LHP',
 
-                $lhp->status === 'in_review'
+                $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
                     ->where('role', 'analis')
@@ -79,7 +79,7 @@ class LhpDisplayStatus
                 $lhp->status === 'in_review'
                 && $lhp->currentReview?->role === 'manager_teknis' => 'Validasi LHP',
 
-                $lhp->status === 'in_review'
+                $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
                     ->where('role', 'manager_teknis')
@@ -98,7 +98,7 @@ class LhpDisplayStatus
                 $lhp->status === 'in_review'
                 && $lhp->currentReview?->role === 'admin_premlim' => 'Validasi LHP',
 
-                $lhp->status === 'in_review'
+                $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
                     ->where('role', 'admin_premlim')

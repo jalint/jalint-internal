@@ -237,7 +237,7 @@ class LhpDocumentController extends Controller
                     'verifikasi_lhp' => $query->where('status', 'in_analysis'),
 
                     'lhp_terverifikasi' => $query->whereIn('status', ['in_review', 'validated'])
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'penyelia_lab')
                             ),
 
                     'review_revisi' => $query->where('status', 'revised')
@@ -256,7 +256,7 @@ class LhpDocumentController extends Controller
                             ),
 
                     'hasil_selesai_dicek' => $query->whereIn('status', ['in_review', 'validated'])
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'analis')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_input_lhp')
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
@@ -479,6 +479,8 @@ class LhpDocumentController extends Controller
                     'status' => 'revised',
                 ]);
 
+                LhpReview::query()->where('lhp_document_id', $lhpDocument->id)->delete();
+
                 return response()->json([
                     'message' => 'LHP ditolak',
                 ]);
@@ -586,7 +588,7 @@ class LhpDocumentController extends Controller
                 'lhp_document_id' => $lhp->id,
                 'role' => 'penyelia_lab',
                 'lhp_step_id' => 2,
-                'decision' => 'approved',
+                'decision' => 'pending',
                 'reviewed_by' => auth()->user()->name,
             ]);
 
