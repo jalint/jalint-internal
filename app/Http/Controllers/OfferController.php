@@ -747,6 +747,8 @@ class OfferController extends Controller
                 'total_amount' => ['required', 'numeric', 'min:0'],
                 'vat_percent' => ['required', 'numeric', 'min:0', 'max:100'],
                 'pph_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+                'ppn_amount' => ['required', 'numeric', 'min:0' ],
+                'pph_amount' => ['required', 'numeric', 'min:0'],
                 'is_draft' => ['required', 'boolean'],
                 'is_dp' => ['required', 'boolean'],
             ]);

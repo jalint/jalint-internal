@@ -31,11 +31,31 @@ class TaskLetterController extends Controller
             $summary['surgas_dikirim'] = (clone $base)
                 ->whereHas('taskLetter')
                 ->count();
+
+            $summary['revised'] = (clone $base)
+            ->whereHas('taskLetter', fn ($q) => $q->where('status', 'revised')
+            )->count();
+        }
+
+        if (auth()->user()->hasRole('manager_teknis')) {
+            $summary['konfirmasi_surat_tugas'] = (clone $base)
+                ->whereHas('taskLetter', fn ($q) => $q->where('status', 'pending')
+                )
+                ->count();
+
+            $summary['surat_tugas_dikonfirmasi'] = (clone $base)
+                ->whereHas('taskLetter', fn ($q) => $q->whereIn('status', ['confirmed', 'approved'])
+                )
+                ->count();
+
+            $summary['revised'] = (clone $base)
+            ->whereHas('taskLetter', fn ($q) => $q->where('status', 'revised')
+            )->count();
         }
 
         if (auth()->user()->hasRole('ppcu')) {
             $summary['konfirmasi_surat_tugas'] = (clone $base)
-                ->whereHas('taskLetter', fn ($q) => $q->where('status', 'pending')
+                ->whereHas('taskLetter', fn ($q) => $q->where('status', 'approved')
                 )
                 ->count();
 
@@ -50,7 +70,10 @@ class TaskLetterController extends Controller
 
     public function index(Request $request)
     {
-        $role = auth()->user()->roles->first()->name;
+        $role = auth()->user()
+            ->roles()
+            ->whereIn('name', ['ppcu', 'penyelia', 'manager_teknis'])
+            ->value('name');
 
         $filter = $request->query('filter', 'all');
         $search = $request->query('search');
@@ -66,10 +89,10 @@ class TaskLetterController extends Controller
             ]);
 
         /*
-         * =========================
-         * DEFAULT: BULAN BERJALAN
-         * =========================
-         */
+        |--------------------------------------------------------------------------
+        | DEFAULT: BULAN BERJALAN
+        |--------------------------------------------------------------------------
+        */
         if (!$startDate && !$endDate) {
             $query->whereBetween('created_at', [
                 now()->startOfMonth(),
@@ -77,11 +100,6 @@ class TaskLetterController extends Controller
             ]);
         }
 
-        /*
-         * =========================
-         * FILTER TANGGAL
-         * =========================
-         */
         if ($startDate) {
             $query->whereDate('created_at', '>=', $startDate);
         }
@@ -91,39 +109,58 @@ class TaskLetterController extends Controller
         }
 
         /*
-         * =========================
-         * FILTER ROLE + STATUS
-         * =========================
-         */
+        |--------------------------------------------------------------------------
+        | FILTER SESUAI SUMMARY (STRICT 1:1)
+        |--------------------------------------------------------------------------
+        */
         switch ($role) {
             case 'penyelia':
                 match ($filter) {
-                    'waiting_task_letter' => $query->whereDoesntHave('taskLetter'),
-                    'task_letter_sent' => $query->whereHas('taskLetter'),
+                    'menunggu_surat_tugas' => $query->whereDoesntHave('taskLetter'),
+
+                    'surgas_dikirim' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', '!=', 'revised')
+                    ),
+
+                    'revised' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', 'revised')
+                    ),
+
+                    default => null,
+                };
+                break;
+
+            case 'manager_teknis':
+                match ($filter) {
+                    'konfirmasi_surat_tugas' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', 'pending')
+                    ),
+
+                    'surat_tugas_dikonfirmasi' => $query->whereHas('taskLetter', fn ($q) => $q->whereIn('status', ['confirmed', 'approved'])
+                    ),
+
+                    'revised' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', 'revised')
+                    ),
+
                     default => null,
                 };
                 break;
 
             case 'ppcu':
                 match ($filter) {
-                    'confirm_task_letter' => $query->whereHas(
-                        'taskLetter',
-                        fn ($q) => $q->where('status', 'pending')
+                    'konfirmasi_surat_tugas' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', 'approved')
                     ),
-                    'task_executed' => $query->whereHas(
-                        'taskLetter',
-                        fn ($q) => $q->where('status', 'confirmed')
+
+                    'surgas_dilaksankan' => $query->whereHas('taskLetter', fn ($q) => $q->where('status', 'confirmed')
                     ),
+
                     default => null,
                 };
                 break;
         }
 
         /*
-         * =========================
-         * SEARCH
-         * =========================
-         */
+        |--------------------------------------------------------------------------
+        | SEARCH
+        |--------------------------------------------------------------------------
+        */
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('offer_number', 'like', "%{$search}%")
@@ -138,10 +175,10 @@ class TaskLetterController extends Controller
             ->paginate($request->per_page ?? 15);
 
         /*
-         * =========================
-         * DISPLAY STATUS
-         * =========================
-         */
+        |--------------------------------------------------------------------------
+        | DISPLAY STATUS (UI FRIENDLY)
+        |--------------------------------------------------------------------------
+        */
         $offers->getCollection()->transform(function ($offer) use ($role) {
             $offer->display_status = $this->resolveTaskLetterStatus($offer, $role);
 
@@ -155,7 +192,8 @@ class TaskLetterController extends Controller
     {
         $request->validate([
             'offer_id' => ['required', 'exists:offers,id'],
-            'task_date' => ['required', 'date'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date'],
             'note' => ['nullable', 'string'],
             'officers' => ['required', 'array', 'min:1'],
             'officers.*.id' => ['required', 'exists:employees,id'],
@@ -178,7 +216,8 @@ class TaskLetterController extends Controller
             $taskLetter = TaskLetter::create([
                 'offer_id' => $offer->id,
                 'task_letter_number' => $this->generateTaskLetterNumber(),
-                'task_date' => $request->task_date,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
                 'note' => $request->note,
                 'status' => 'pending',
                 'created_by' => auth()->id(),
@@ -217,7 +256,8 @@ class TaskLetterController extends Controller
     public function update(Request $request, $offerId)
     {
         $request->validate([
-            'task_date' => ['required', 'date'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date'],
             'note' => ['nullable', 'string'],
             'officers' => ['required', 'array', 'min:1'],
             'officers.*.name' => ['required', 'string'],
@@ -243,7 +283,8 @@ class TaskLetterController extends Controller
 
             // 3️⃣ Update header surat tugas
             $taskLetter->update([
-                'task_date' => $request->task_date,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
                 'note' => $request->note,
                 'updated_by' => auth()->id(),
             ]);
@@ -268,18 +309,61 @@ class TaskLetterController extends Controller
         });
     }
 
-    public function review($id)
+    public function review(Request $request, $id)
     {
         $task = TaskLetter::findOrFail($id);
+        $user = auth()->user();
 
-        if ($task->status !== 'pending') {
-            abort(400, 'Surat tugas tidak dalam status pending atau sudah dikonfirmasi');
+        /*
+        |--------------------------------------------------------------------------
+        | MANAGER TEKNIS
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('manager_teknis')) {
+            if ($task->status !== 'pending') {
+                abort(400, 'Surat tugas tidak dalam status pending');
+            }
+
+            $validated = $request->validate([
+                'decision' => ['required', 'in:approved,revised'],
+            ]);
+
+            $task->update([
+                'status' => $validated['decision'],
+            ]);
+
+            return response()->json([
+                'message' => $validated['decision'] === 'approved'
+                    ? 'Surat tugas disetujui oleh Manager Teknis'
+                    : 'Surat tugas direvisi oleh Manager Teknis',
+            ]);
         }
 
-        $task->status = 'confirmed';
-        $task->save();
+        /*
+        |--------------------------------------------------------------------------
+        | PPCU
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('ppcu')) {
+            if ($task->status !== 'approved') {
+                abort(400, 'Surat tugas belum disetujui Manager Teknis');
+            }
 
-        return response()->json(['message' => 'Surat Tugas Dikofirmasi']);
+            $task->update([
+                'status' => 'confirmed',
+            ]);
+
+            return response()->json([
+                'message' => 'Surat tugas dikonfirmasi dan siap dilaksanakan',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | ROLE TIDAK DIIZINKAN
+        |--------------------------------------------------------------------------
+        */
+        abort(403, 'Anda tidak memiliki akses untuk mereview surat tugas');
     }
 
     protected function generateTaskLetterNumber(): string
@@ -319,22 +403,67 @@ class TaskLetterController extends Controller
 
     private function resolveTaskLetterStatus(Offer $offer, string $role): string
     {
-        if (!$offer->invoice) {
-            return '-';
+        $taskLetter = $offer->taskLetter;
+
+        /*
+        |--------------------------------------------------------------------------
+        | PENYELIA
+        |--------------------------------------------------------------------------
+        */
+        if ($role === 'penyelia') {
+            if (!$taskLetter) {
+                return 'Menunggu Surat Tugas';
+            }
+
+            if ($taskLetter->status === 'revised') {
+                return 'Direvisi';
+            }
+
+            return 'Surat Tugas Dikirim';
         }
 
-        if (!$offer->taskLetter) {
-            return 'Menunggu Surat Tugas';
-        }
+        /*
+        |--------------------------------------------------------------------------
+        | MANAGER TEKNIS
+        |--------------------------------------------------------------------------
+        */
+        if ($role === 'manager_teknis') {
+            if (!$taskLetter) {
+                return 'Belum Ada Surat Tugas';
+            }
 
-        if ($role === 'ppcu') {
-            return match ($offer->taskLetter->status) {
-                'pending' => 'Konfirmasi Surat Tugas',
-                'confirmed' => 'Tugas Dilaksanakan',
-                default => 'Surat Tugas',
+            return match ($taskLetter->status) {
+                'pending' => 'Menunggu Konfirmasi Surat Tugas',
+                'approved',
+                'confirmed' => 'Surat Tugas Dikonfirmasi',
+                'revised' => 'Direvisi',
+                default => 'Status Tidak Dikenal',
             };
         }
 
-        return 'Surgas Dikirim';
+        /*
+        |--------------------------------------------------------------------------
+        | PPCU
+        |--------------------------------------------------------------------------
+        */
+        if ($role === 'ppcu') {
+            if (!$taskLetter) {
+                return 'Belum Ada Surat Tugas';
+            }
+
+            return match ($taskLetter->status) {
+                'approved' => 'Konfirmasi Surat Tugas',
+                'confirmed' => 'Surat Tugas Dilaksanakan',
+                'revised' => 'Direvisi',
+                default => 'Menunggu Proses',
+            };
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FALLBACK
+        |--------------------------------------------------------------------------
+        */
+        return 'Tidak Tersedia';
     }
 }

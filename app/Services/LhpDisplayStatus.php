@@ -28,7 +28,7 @@ class LhpDisplayStatus
             'analis' => match (true) {
                 $lhp->status === 'draft' => 'Analisa Data',
 
-                $lhp->status === 'in_analysis' => 'LHP Telah Diisi',
+                $lhp->status === 'in_analysis' || $lhp->status === 'validated' => 'LHP Telah Diisi',
 
                 $lhp->status === 'revised' => 'Revisi LHP',
 
@@ -44,7 +44,7 @@ class LhpDisplayStatus
                 $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
-                    ->where('role', 'analis')
+                    ->where('role', 'penyelia_lab')
                     ->exists() => 'LHP Terverifikasi',
 
                 $lhp->status === 'revised'
@@ -63,7 +63,7 @@ class LhpDisplayStatus
                 $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
-                    ->where('role', 'analis')
+                    ->where('role', 'admin_input_lhp')
                     ->exists() => 'Hasil Selesai Dicek',
 
                 $lhp->status === 'revised'

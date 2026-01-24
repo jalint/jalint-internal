@@ -27,12 +27,12 @@ class LhpVisibility
     private static function analis()
     {
         return LhpDocument::query()
-            ->whereIn('status', ['draft', 'in_analysis', 'revised']);
+            ->whereIn('status', ['draft', 'in_analysis', 'revised', 'validated']);
     }
 
     private static function penyeliaLab()
     {
-        return LhpDocument::query()->whereIn('status', ['in_review', 'validated', 'revised']);
+        return LhpDocument::query()->whereIn('status', ['in_analysis', 'in_review', 'validated', 'revised']);
     }
 
     private static function adminInputLHP()

@@ -45,11 +45,11 @@ class OfferStatusResolver
              */
             'admin_penawaran' => match (true) {
                 $offer->created_by_type === 'customer'
-                && $review->decision === 'pending'
-                && $review->reviewStep->code === 'admin_penawaran' => 'Verif Penawaran Pelanggan',
+                && $review?->decision === 'pending'
+                && $review->reviewStep?->code === 'admin_penawaran' => 'Verif Penawaran Pelanggan',
 
                 $offer->status === 'in_review'
-                && $review->reviewStep->code !== 'admin_penawaran' => 'Proses Kaji Ulang',
+                && $review->reviewStep?->code !== 'admin_penawaran' => 'Proses Kaji Ulang',
 
                 // ===== PERBAIKAN QUERY (PENDING PAYMENT) =====
                 $offer->status === 'approved'
@@ -72,20 +72,20 @@ class OfferStatusResolver
              * =========================
              */
             'admin_kuptdk' => match (true) {
-                $review->reviewStep->code === 'admin_kuptdk' => 'Kaji Ulang',
+                $review->reviewStep?->code === 'admin_kuptdk' => 'Kaji Ulang',
 
-                $review->reviewStep->code === 'manager_admin'
+                $review->reviewStep?->code === 'manager_admin'
                 && $review->decision === 'pending' => 'Menunggu Persetujuan MA',
 
                 $offer->hasApprovedBy(
                     ReviewStep::query()->where('code', 'manager_admin')->value('id')
                 )
-                && $review->reviewStep->code === 'manager_teknis' => 'Disetujui MA',
+                && $review->reviewStep?->code === 'manager_teknis' => 'Disetujui MA',
 
                 $offer->hasApprovedBy(
                     ReviewStep::query()->where('code', 'manager_teknis')->value('id')
                 )
-                && $review->reviewStep->code === 'customer' => 'Disetujui MT',
+                && $review->reviewStep?->code === 'customer' => 'Disetujui MT',
 
                 default => 'Kaji Ulang',
             },
@@ -96,9 +96,9 @@ class OfferStatusResolver
              * =========================
              */
             'manager_admin' => match (true) {
-                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_admin' => 'Verifikasi Kaji Ulang',
+                $offer->status === 'in_review' && $review->reviewStep?->code === 'manager_admin' => 'Verifikasi Kaji Ulang',
 
-                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_teknis'
+                $offer->status === 'in_review' && $review->reviewStep?->code === 'manager_teknis'
                 && $review->decision === 'pending' => 'Menunggu Persetujuan MT',
 
                 default => 'Verifikasi Kaji Ulang',
@@ -110,7 +110,7 @@ class OfferStatusResolver
              * =========================
              */
             'manager_teknis' => match (true) {
-                $offer->status === 'in_review' && $review->reviewStep->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
+                $offer->status === 'in_review' && $review->reviewStep?->code === 'manager_teknis' => 'Verifikasi Kaji Ulang',
 
                 $offer->status === 'in_review' && $offer->hasApprovedBy(
                     ReviewStep::query()->where('code', 'manager_teknis')->value('id')

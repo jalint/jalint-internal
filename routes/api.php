@@ -9,6 +9,7 @@ use App\Http\Controllers\CustomerContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOfferController;
 use App\Http\Controllers\CustomerTypeController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\JalintPdfController;
 use App\Http\Controllers\LhpDocumentController;
@@ -104,6 +105,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('lhp-documents/summary', [LhpDocumentController::class, 'summary']);
     Route::post('lhp-documents/analysis', [LhpDocumentController::class, 'fillAnalysis']);
     Route::apiResource('lhp-documents', LhpDocumentController::class);
+
+    Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
 
 Route::get('/print', [JalintPdfController::class, 'suratTugas']);

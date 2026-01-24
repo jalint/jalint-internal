@@ -79,7 +79,7 @@ class LhpDocumentController extends Controller
 
             case 'penyelia_lab':
                 $summary['verifikasi_lhp'] = (clone $base)->where('status', 'in_analysis')->count();
-                $summary['lhp_terverifikasi'] = (clone $base)->where('status', ['in_review', 'validated'])
+                $summary['lhp_terverifikasi'] = (clone $base)->whereIn('status', ['in_review', 'validated'])
                 ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'penyelia_lab')
                 )
                 ->count();
@@ -94,7 +94,7 @@ class LhpDocumentController extends Controller
                 )
                 ->count();
 
-                $summary['hasil_selesai_dicek'] = (clone $base)->where('status', ['in_review', 'validated'])
+                $summary['hasil_selesai_dicek'] = (clone $base)->whereIn('status', ['in_review', 'validated'])
                 ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_input_lhp')
                 )
                 ->count();
@@ -108,7 +108,7 @@ class LhpDocumentController extends Controller
                 )
                 ->count();
 
-                $summary['lhp_tervalidasi'] = (clone $base)->where('status', ['in_review', 'validated'])
+                $summary['lhp_tervalidasi'] = (clone $base)->whereIn('status', ['in_review', 'validated'])
                 ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'manager_teknis')
                 )
                 ->count();
@@ -125,7 +125,7 @@ class LhpDocumentController extends Controller
                 )
                 ->count();
 
-                $summary['lhp_tervalidasi'] = (clone $base)->where('status', ['in_review', 'validated'])
+                $summary['lhp_tervalidasi'] = (clone $base)->whereIn('status', ['in_review', 'validated'])
                 ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
                 )
                 ->count();
@@ -479,7 +479,10 @@ class LhpDocumentController extends Controller
                     'status' => 'revised',
                 ]);
 
-                LhpReview::query()->where('lhp_document_id', $lhpDocument->id)->delete();
+                LhpReview::query()
+                ->where('lhp_document_id', $lhpDocument->id)
+                ->where('id', '!=', $currentReview->id)
+                ->delete();
 
                 return response()->json([
                     'message' => 'LHP ditolak',
@@ -517,7 +520,7 @@ class LhpDocumentController extends Controller
             }
 
             $lhpDocument->update([
-                'status' => 'approved',
+                'status' => 'validated',
             ]);
 
             return response()->json([
