@@ -110,4 +110,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
 
-Route::post('task-letters/{id}/print', [JalintPdfController::class, 'suratTugas']);
+Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugas']);

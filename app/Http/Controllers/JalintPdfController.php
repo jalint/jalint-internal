@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Library\Fpdf\JalintPDF;
 use App\Models\Offer;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class JalintPdfController extends Controller
@@ -13,24 +14,29 @@ class JalintPdfController extends Controller
         $data = $this->getDataOffer($id);
 
         $pdf = new JalintPDF();
+        $pdf->SetAutoPageBreak(true, 20);
         $pdf->AliasNbPages(); // WAJIB: Agar {nb} terbaca jumlah total halaman
         $pdf->AddPage();
+
+        $taskLetterNumber = $data['task_letter']['task_letter_number'];
+        $namaKegiatan = $data['title'];
+        $customerName = $data['customer']['name'];
+        $location = $data['location'];
+        $dataPersonel = $data['task_letter']['officers'];
+        $tanggalKegiatan = $this->formatTanggalRange($data['task_letter']['start_date'], $data['task_letter']['end_date']);
 
         // Setting Font
         $pdf->SetFont('Arial', 'BU', 14);
         $pdf->Cell(0, 8, 'SURAT TUGAS', 0, 1, 'C');
         $pdf->SetFont('Arial', '', 10);
-        $pdf->Cell(0, 2, 'No: 800/ST/Jalint-Lab/XII/2025', 0, 1, 'C');
+        $pdf->Cell(0, 2, "No: $taskLetterNumber", 0, 1, 'C');
         $pdf->Ln(5);
 
         // --- KALIMAT PEMBUKA (JUSTIFY) ---
         $pdf->SetFont('Arial', '', 11);
 
         // Ambil data dari database/variabel
-        $isiSurat = 'Sehubungan dengan Kegiatan Pengambilan dan Analisis Contoh Uji Air lingkungan kegiatan pemantauan lingkungan SII 2025 PT. Seleraya Merangin Dua di Lapangan Tampi Desa Belani Kecamatan Rawas Ilir Kabupaten Musi Rawas Utara Kabupaten Sumatera Selatan, Maka dengan ini kami tugaskan:';
-
-        // Konversi encoding untuk keamanan karakter (seperti titik atau simbol lainnya)
-        $isiSurat = mb_convert_encoding($isiSurat, 'ISO-8859-1', 'UTF-8');
+        $isiSurat = "Sehubungan dengan $namaKegiatan $customerName di $location, Maka dengan ini kami tugaskan:";
 
         // MultiCell(lebar, tinggi_baris, teks, border, alignment)
         // 'J' berarti Justify (rata kiri-kanan) agar terlihat rapi seperti dokumen resmi
@@ -38,12 +44,12 @@ class JalintPdfController extends Controller
 
         $pdf->Ln(5);
 
-        $dataPersonel = [
-            ['nama' => 'Muhammad Rizki Ardicha', 'jabatan' => 'Koordinator PPC', 'ket' => '-'],
-            ['nama' => 'Muhammad Fauzi', 'jabatan' => 'PPC', 'ket' => '-'],
-            ['nama' => 'M. Habib Fadillah P', 'jabatan' => 'PPC', 'ket' => '-'],
-            ['nama' => 'Zul Hamdi', 'jabatan' => 'Driver', 'ket' => '-'],
-        ];
+        // $dataPersonel = [
+        //     ['nama' => 'Muhammad Rizki Ardicha', 'jabatan' => 'Koordinator PPC', 'ket' => '-'],
+        //     ['nama' => 'Muhammad Fauzi', 'jabatan' => 'PPC', 'ket' => '-'],
+        //     ['nama' => 'M. Habib Fadillah P', 'jabatan' => 'PPC', 'ket' => '-'],
+        //     ['nama' => 'Zul Hamdi', 'jabatan' => 'Driver', 'ket' => '-'],
+        // ];
 
         // Membuat Tabel Header
         // --- SET HEADER TABEL ---
@@ -76,6 +82,7 @@ class JalintPdfController extends Controller
         // --- ISI TABEL DINAMIS ---
         $no = 1;
         foreach ($dataPersonel as $row) {
+            // dd($row);
             // PENTING: Di setiap awal baris baru, kita harus SetX lagi agar tetap di tengah
             $pdf->SetX($marginTengah);
 
@@ -85,44 +92,21 @@ class JalintPdfController extends Controller
 
             // Kolom Data (Normal)
             $pdf->SetFont('Arial', '', 10);
-            $pdf->Cell($wNama, 8, mb_convert_encoding($row['nama'], 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-            $pdf->Cell($wJab, 8, mb_convert_encoding($row['jabatan'], 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-            $pdf->Cell($wKet, 8, mb_convert_encoding($row['ket'], 'ISO-8859-1', 'UTF-8'), 1, 1, 'L');
+            $pdf->Cell($wNama, 8, $row['employee']['name'], 1, 0, 'L');
+            $pdf->Cell($wJab, 8, $row['position'], 1, 0, 'L');
+            $pdf->Cell($wKet, 8, $row['description'], 1, 1, 'L');
         }
         $pdf->SetDrawColor(0, 0, 0);
         $pdf->Ln(5);
         $pdf->SetFont('Arial', '', 11);
 
         // Ambil data dari database/variabel
-        $x = 'Untuk melakukan pekerjaan tersebut diatas pada hari Kamis-Sabtu 18-20 Desember 2025 dengan rincian jumlah dan parameter Sebagai berikut:';
+        $informasiKegiatan = "Untuk melakukan pekerjaan tersebut diatas pada hari $tanggalKegiatan dengan rincian jumlah dan parameter Sebagai berikut:";
 
         // MultiCell(lebar, tinggi_baris, teks, border, alignment)
         // 'J' berarti Justify (rata kiri-kanan) agar terlihat rapi seperti dokumen resmi
-        $pdf->MultiCell(0, 6, $x, 0, 'J');
+        $pdf->MultiCell(0, 6, $informasiKegiatan, 0, 'J');
         $pdf->Ln(5);
-
-        // Table UJI ==============================================
-        // 1. Data Dinamis (Contoh data dari Database)
-        $dataUji = [
-            [
-                'bahan' => 'Udara Ambien',
-                'parameter' => 'SO2, NO2, CO, TSP, PM10, PM2.5, Pb, O3, HC',
-                'satuan' => 'Titik',
-                'jumlah' => '2',
-            ],
-            [
-                'bahan' => 'Kebisingan',
-                'parameter' => 'Kebisingan Lingkungan (24 Jam)',
-                'satuan' => 'Titik',
-                'jumlah' => '2',
-            ],
-            [
-                'bahan' => 'Air Bersih',
-                'parameter' => 'Fisika, Kimia, Mikrobiologi (Permenkes 2/2023)',
-                'satuan' => 'Sampel',
-                'jumlah' => '1',
-            ],
-        ];
 
         // 2. Pengaturan Posisi Tengah
         // 1. Data Dinamis
@@ -141,27 +125,27 @@ class JalintPdfController extends Controller
                 'satuan' => 'Titik',
                 'jumlah' => '4',
             ],
-            [
-                'bahan' => 'Air Limbah Domestik',
-                'baku_mutu' => 'Peraturan Menteri LHK No. P.68 Tahun 2016 (Tentang Baku Mutu Air Limbah Domestik bagi Usaha dan/atau Kegiatan)',
-                'parameter' => 'pH, Total Suspended Solids (TSS), Biochemical Oxygen Demand (BOD), Chemical Oxygen Demand (COD), Minyak & Lemak, Amonia, Total Coliform',
-                'satuan' => 'Sampel',
-                'jumlah' => '2',
-            ],
-            [
-                'bahan' => 'Emisi Sumber Tidak Bergerak (Genset)',
-                'baku_mutu' => 'Peraturan Menteri LHK No. 11 Tahun 2021 Lampiran I.1 (Kapasitas 101KW - 500KW Bahan Bakar Minyak)',
-                'parameter' => 'Nitrogen Oksida (NOx) ditentukan sebagai NO2, Karbon Monoksida (CO), Laju Alir, Partikulat, Sulfur Dioksida (SO2)',
-                'satuan' => 'Titik',
-                'jumlah' => '3',
-            ],
-            [
-                'bahan' => 'Air Permukaan',
-                'baku_mutu' => 'PP RI No. 22 Tahun 2021 Lampiran VI (Baku Mutu Air Nasional - Kelas II untuk Rekreasi Air dan Budidaya)',
-                'parameter' => 'Temperatur, Zat Terlarut (TDS), Zat Tersuspensi (TSS), pH, DO, BOD, COD, Fosfat (PO4), Nitrat (NO3), Arsen (As), Kadmium (Cd), Kobalt (Co), Kromium (Cr), Tembaga (Cu), Besi (Fe), Timbal (Pb), Seng (Zn), Merkuri (Hg)',
-                'satuan' => 'Sampel',
-                'jumlah' => '5',
-            ],
+            // [
+            //     'bahan' => 'Air Limbah Domestik',
+            //     'baku_mutu' => 'Peraturan Menteri LHK No. P.68 Tahun 2016 (Tentang Baku Mutu Air Limbah Domestik bagi Usaha dan/atau Kegiatan)',
+            //     'parameter' => 'pH, Total Suspended Solids (TSS), Biochemical Oxygen Demand (BOD), Chemical Oxygen Demand (COD), Minyak & Lemak, Amonia, Total Coliform',
+            //     'satuan' => 'Sampel',
+            //     'jumlah' => '2',
+            // ],
+            // [
+            //     'bahan' => 'Emisi Sumber Tidak Bergerak (Genset)',
+            //     'baku_mutu' => 'Peraturan Menteri LHK No. 11 Tahun 2021 Lampiran I.1 (Kapasitas 101KW - 500KW Bahan Bakar Minyak)',
+            //     'parameter' => 'Nitrogen Oksida (NOx) ditentukan sebagai NO2, Karbon Monoksida (CO), Laju Alir, Partikulat, Sulfur Dioksida (SO2)',
+            //     'satuan' => 'Titik',
+            //     'jumlah' => '3',
+            // ],
+            // [
+            //     'bahan' => 'Air Permukaan',
+            //     'baku_mutu' => 'PP RI No. 22 Tahun 2021 Lampiran VI (Baku Mutu Air Nasional - Kelas II untuk Rekreasi Air dan Budidaya)',
+            //     'parameter' => 'Temperatur, Zat Terlarut (TDS), Zat Tersuspensi (TSS), pH, DO, BOD, COD, Fosfat (PO4), Nitrat (NO3), Arsen (As), Kadmium (Cd), Kobalt (Co), Kromium (Cr), Tembaga (Cu), Besi (Fe), Timbal (Pb), Seng (Zn), Merkuri (Hg)',
+            //     'satuan' => 'Sampel',
+            //     'jumlah' => '5',
+            // ],
         ];
 
         // 2. Lebar Kolom
@@ -206,13 +190,13 @@ class JalintPdfController extends Controller
                 $bahan,
                 $baku_mutu,
                 $parameter,
-                $satuan,
-                $item['jumlah'],
+                'Titik',
+                1,
             ]);
         }
-
+        $totaUji = count($data['samples']) >= 2 ? 15 : 35;
         // ========================
-        // $pdf->Ln(30);
+        $pdf->Ln($totaUji);
         // 1. Set Lebar Kolom untuk fungsi Row()
         $pdf->SetWidths([50, 40, 40, 40]);
         $pdf->SetAligns(['C', 'C', 'C', 'C']);
@@ -255,7 +239,6 @@ class JalintPdfController extends Controller
         }
 
         // ========================
-
         $pdf->Ln(10); // Memberi jarak dari tabel ke kalimat penutup
 
         // --- KALIMAT PENUTUP ---
@@ -301,18 +284,45 @@ class JalintPdfController extends Controller
                 ->whereHas('taskLetter') // hanya offer yang punya surat tugas
                 ->with([
                     'taskLetter' => function ($q) {
-                        $q->with('officers');
+                        $q->with('officers.employee');
                     },
-                    'offerSamples' => function ($q) {
+                    'samples' => function ($q) {
                         $q->with([
-                            'parameters', // kalau ada parameter sample
+                            'parameters.testParameter', // kalau ada parameter sample
                         ]);
                     },
                     'customer:id,name',
                 ])
                 ->orderByDesc('created_at')
-                ->get();
+                ->get()->toArray()[0];
 
         return $offers;
+    }
+
+    public function formatTanggalRange(string $start, string $end): string
+    {
+        Carbon::setLocale('id');
+
+        $startDate = Carbon::parse($start);
+        $endDate = Carbon::parse($end);
+
+        $hariMulai = $startDate->translatedFormat('l');
+        $hariAkhir = $endDate->translatedFormat('l');
+
+        $tglMulai = $startDate->day;
+        $tglAkhir = $endDate->day;
+
+        $bulan = $endDate->translatedFormat('F');
+        $tahun = $endDate->year;
+
+        return sprintf(
+            '%s-%s %d-%d %s %d',
+            $hariMulai,
+            $hariAkhir,
+            $tglMulai,
+            $tglAkhir,
+            $bulan,
+            $tahun
+        );
     }
 }
