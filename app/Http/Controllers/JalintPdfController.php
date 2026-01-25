@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Library\Fpdf\JalintPDF;
+use App\Models\Offer;
 use Illuminate\Http\Request;
 
 class JalintPdfController extends Controller
 {
-    public function suratTugas(Request $request)
+    public function suratTugas(Request $request, $id)
     {
+        $data = $this->getDataOffer($id);
+
         $pdf = new JalintPDF();
         $pdf->AliasNbPages(); // WAJIB: Agar {nb} terbaca jumlah total halaman
         $pdf->AddPage();
@@ -290,5 +293,26 @@ class JalintPdfController extends Controller
 
         return response($pdf->Output('S'), 200)
                 ->header('Content-Type', 'application/pdf');
+    }
+
+    private function getDataOffer($id)
+    {
+        $offers = Offer::query()
+                ->whereHas('taskLetter') // hanya offer yang punya surat tugas
+                ->with([
+                    'taskLetter' => function ($q) {
+                        $q->with('officers');
+                    },
+                    'offerSamples' => function ($q) {
+                        $q->with([
+                            'parameters', // kalau ada parameter sample
+                        ]);
+                    },
+                    'customer:id,name',
+                ])
+                ->orderByDesc('created_at')
+                ->get();
+
+        return $offers;
     }
 }

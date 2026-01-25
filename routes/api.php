@@ -82,6 +82,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/employees/{employee}/photo', [EmployeeController::class, 'uploadPhoto']);
 
     Route::apiResource('users', UserController::class);
+
     Route::post('task-letters/{id}/review', [TaskLetterController::class, 'review']);
     Route::get('task-letters/summary', [TaskLetterController::class, 'summary']);
     Route::apiResource('task-letters', TaskLetterController::class);
@@ -109,4 +110,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
 
-Route::get('/print', [JalintPdfController::class, 'suratTugas']);
+Route::post('task-letters/{id}/print', [JalintPdfController::class, 'suratTugas']);

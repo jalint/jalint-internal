@@ -15,4 +15,9 @@ class TaskLetterOfficer extends Model
     {
         return $this->belongsTo(TaskLetter::class);
     }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
 }

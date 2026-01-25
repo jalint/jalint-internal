@@ -25,10 +25,10 @@ class Offer extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function details()
-    {
-        return $this->hasMany(OfferDetail::class);
-    }
+    // public function details()
+    // {
+    //     return $this->hasMany(OfferDetail::class);
+    // }
 
     public function template()
     {

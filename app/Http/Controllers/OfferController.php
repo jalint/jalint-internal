@@ -85,14 +85,15 @@ class OfferController extends Controller
 
                 // ✅ Proses Pengujian (approved payment exists)
                 $summary['proses_pengujian'] = (clone $base)
+                ->where('status', 'approved')
                 ->where(function ($q) {
                     $q->where('is_dp', 0)
-                        ->orWhere(function ($qq) {
-                            $qq->where('status', 'approved')
-                            ->whereHas('invoice.payments', fn ($p) => $p->where('status', 'approved'));
-                        });
+                      ->orWhereHas(
+                          'invoice.payments',
+                          fn ($p) => $p->where('status', 'approved')
+                      );
                 })
-                 ->count();
+                ->count();
 
                 $summary['verif_pelanggan'] = (clone $base)
                     ->where('created_by_type', 'customer')
@@ -302,13 +303,14 @@ class OfferController extends Controller
                     'cek_pembayaran_pelanggan' => $query->where('status', 'approved')->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
                     ),
 
-                    'proses_pengujian' => $query->where(function ($q) {
-                        $q->where('is_dp', 0)
-                            ->orWhere(function ($qq) {
-                                $qq->where('status', 'approved')
-                                ->whereHas('invoice.payments', fn ($p) => $p->where('status', 'approved'));
-                            });
-                    }),
+                    'proses_pengujian' => $query->where('status', 'approved')
+                                    ->where(function ($q) {
+                                        $q->where('is_dp', 0)
+                                        ->orWhereHas(
+                                            'invoice.payments',
+                                            fn ($p) => $p->where('status', 'approved')
+                                        );
+                                    }),
 
                     default => null,
                 };
@@ -747,7 +749,7 @@ class OfferController extends Controller
                 'total_amount' => ['required', 'numeric', 'min:0'],
                 'vat_percent' => ['required', 'numeric', 'min:0', 'max:100'],
                 'pph_percent' => ['required', 'numeric', 'min:0', 'max:100'],
-                'ppn_amount' => ['required', 'numeric', 'min:0' ],
+                'ppn_amount' => ['required', 'numeric', 'min:0'],
                 'pph_amount' => ['required', 'numeric', 'min:0'],
                 'is_draft' => ['required', 'boolean'],
                 'is_dp' => ['required', 'boolean'],

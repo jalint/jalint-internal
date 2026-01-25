@@ -246,7 +246,7 @@ class TaskLetterController extends Controller
                 'customer:id,name',
                 'samples.parameters.testParameter.sampleType',
                 'invoice:id,offer_id,invoice_number',
-                'taskLetter.officers',
+                'taskLetter.officers.employee',
             ])
             ->firstOrFail();
 

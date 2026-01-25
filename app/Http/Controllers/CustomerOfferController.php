@@ -70,35 +70,32 @@ class CustomerOfferController extends Controller
              ->count(),
 
             'proses_pembayaran_dp' => (clone $base)
-                    ->where(function ($q) {
-                        $q->where('is_dp', 1)
-                            ->orWhere(function ($qq) {
-                                $qq->where('status', 'approved')
-                                        ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'pending')
-                                        );
-                            });
-                    })->count(),
+                        ->where('status', 'approved')
+                      ->where('is_dp', 1)
+                      ->whereHas('invoice')
+                      ->whereDoesntHave('invoice.payments')->count(),
 
             'verifikasi_pembayaran' => (clone $base)
-                ->where('status', 'approved')
-                ->where(function ($q) {
-                    $q->where('is_dp', 1)
-                    ->whereHas(
-                        'invoice.payments',
-                        fn ($p) => $p->where('status', 'pending')
-                    );
-                })
+                    ->where('status', 'approved')
+                      ->where('is_dp', 1)
+                      ->whereHas(
+                          'invoice.payments',
+                          fn ($p) => $p->where('status', 'pending')
+                      )
                 ->count(),
 
             'proses_pengujian' => (clone $base)
-                 ->where(function ($q) {
-                     $q->where('is_dp', 0)
-                         ->orWhere(function ($qq) {
-                             $qq->where('status', 'approved')
-                                     ->whereHas('invoice.payments', fn ($q) => $q->where('status', 'approved')
-                                     );
-                         });
-                 })->count(),
+                 ->where('status', 'approved')
+                ->where(function ($q) {
+                    $q->where('is_dp', 0)
+                        ->orWhere(function ($qq) {
+                            $qq->where('is_dp', 1)
+                                ->whereHas(
+                                    'invoice.payments',
+                                    fn ($p) => $p->where('status', 'approved')
+                                );
+                        });
+                })->count(),
 
             'selesai' => (clone $base)
                 ->where('status', 'completed')
@@ -185,38 +182,33 @@ class CustomerOfferController extends Controller
                 break;
 
             case 'proses_pembayaran_dp':
-                $query->where(function ($q) {
-                    $q->where('is_dp', 1)
-                      ->orWhere(function ($qq) {
-                          $qq->where('status', 'approved')
-                             ->whereHas(
-                                 'invoice.payments',
-                                 fn ($p) => $p->where('status', 'pending')
-                             );
-                      });
-                });
+                $query->where('status', 'approved')
+                      ->where('is_dp', 1)
+                      ->whereHas('invoice')
+                      ->whereDoesntHave('invoice.payments');
                 break;
 
             case 'verifikasi_pembayaran':
                 $query->where('status', 'approved')
-                    ->where('is_dp', 1)
-                    ->whereHas(
-                        'invoice.payments',
-                        fn ($p) => $p->where('status', 'pending')
-                    );
+                      ->where('is_dp', 1)
+                      ->whereHas(
+                          'invoice.payments',
+                          fn ($p) => $p->where('status', 'pending')
+                      );
                 break;
 
             case 'proses_pengujian':
-                $query->where(function ($q) {
-                    $q->where('is_dp', 0)
-                      ->orWhere(function ($qq) {
-                          $qq->where('status', 'approved')
-                             ->whereHas(
-                                 'invoice.payments',
-                                 fn ($p) => $p->where('status', 'approved')
-                             );
-                      });
-                });
+                $query->where('status', 'approved')
+                    ->where(function ($q) {
+                        $q->where('is_dp', 0)
+                          ->orWhere(function ($qq) {
+                              $qq->where('is_dp', 1)
+                                 ->whereHas(
+                                     'invoice.payments',
+                                     fn ($p) => $p->where('status', 'approved')
+                                 );
+                          });
+                    });
                 break;
 
             case 'completed':
@@ -261,6 +253,11 @@ class CustomerOfferController extends Controller
 
             $currentStep = optional($offer->currentReview?->reviewStep)->code;
 
+            $hasInvoice = $offer->invoice !== null;
+            $hasPayment = $offer->invoice?->payments?->count() > 0;
+            $paymentPending = $offer->invoice?->payments?->where('status', 'pending')->isNotEmpty();
+            $paymentApproved = $offer->invoice?->payments?->where('status', 'approved')->isNotEmpty();
+
             $offer->display_status = match (true) {
                 $offer->status === 'draft' => 'Draft',
 
@@ -268,15 +265,40 @@ class CustomerOfferController extends Controller
 
                 $offer->status === 'in_review' => 'Penawaran Diproses',
 
-                $offer->is_dp === 1 && $paymentPending => 'Verifikasi Pembayaran',
+                /*
+                |--------------------------------------------------------------------------
+                | DP FLOW
+                |--------------------------------------------------------------------------
+                */
 
-                $offer->is_dp === 1 => 'Proses Pembayaran DP',
+                // Approved + DP + invoice ada + BELUM ADA payment
+                $offer->status === 'approved'
+                    && $offer->is_dp == 1
+                    && $hasInvoice
+                    && !$hasPayment => 'Proses Pembayaran DP',
 
-                $offer->is_dp === 0 && $paymentApproved => 'Proses Pengujian',
+                // Approved + DP + payment pending
+                $offer->status === 'approved'
+                    && $offer->is_dp == 1
+                    && $paymentPending => 'Verifikasi Pembayaran',
 
-                $offer->status === 'completed' => 'Completed',
+                // Approved + DP + payment approved
+                $offer->status === 'approved'
+                    && $offer->is_dp == 1
+                    && $paymentApproved => 'Proses Pengujian',
 
-                $offer->status === 'rejected' => 'Direvisi',
+                /*
+                |--------------------------------------------------------------------------
+                | NON DP FLOW
+                |--------------------------------------------------------------------------
+                */
+
+                $offer->status === 'approved'
+                    && $offer->is_dp == 0 => 'Proses Pengujian',
+
+                $offer->status == 'completed' => 'Completed',
+
+                $offer->status == 'rejected' => 'Direvisi',
 
                 default => ucfirst($offer->status),
             };
