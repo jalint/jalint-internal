@@ -11,6 +11,7 @@ use App\Http\Controllers\CustomerOfferController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\JalintPdfController;
 use App\Http\Controllers\LhpDocumentController;
 use App\Http\Controllers\OfferController;
@@ -107,7 +108,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('lhp-documents/analysis', [LhpDocumentController::class, 'fillAnalysis']);
     Route::apiResource('lhp-documents', LhpDocumentController::class);
 
+    Route::get('invoice-payments/summary', [InvoicePaymentController::class, 'summary']);
+    Route::apiResource('invoice-payments', InvoicePaymentController::class);
+
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
 
-Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugas']);
+Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugasTFPDF']);
+Route::get('invoices/print', [JalintPdfController::class, 'printInvoice']);

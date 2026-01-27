@@ -39,7 +39,9 @@ class StoreOfferRequest extends FormRequest
             'vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pph_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'is_draft' => ['required', 'boolean'],
-            'is_dp' => ['required', 'boolean'],
+            'is_dp'     => ['required', 'boolean'],
+            'dp_amount' => ['required_if:is_dp,true', 'numeric', 'min:1'],
+
 
             /* =====================
              | SAMPLES

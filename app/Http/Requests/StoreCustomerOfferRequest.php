@@ -23,7 +23,9 @@ class StoreCustomerOfferRequest extends FormRequest
             'expired_date' => ['required', 'date', 'after_or_equal:offer_date'],
             'request_number' => ['nullable', 'string', 'max:100'],
             'location' => ['required', 'string', 'max:255'],
-
+            'template_id' => ['nullable', 'exists:templates,id'],
+            'additional_description' => ['nullable', 'string'],
+          
             // =====================
             // SAMPLES
             // =====================

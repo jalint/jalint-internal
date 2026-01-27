@@ -430,6 +430,8 @@ class OfferController extends Controller
                     'additional_description' => $request->additional_description,
                     'location' => $request->location,
                     'testing_activities' => $request->testing_activities,
+                    'is_dp' => $request->boolean('is_dp'),
+                    'dp_amount' => $request->dp_amount ?? 0,
                     'discount_amount' => $request->discount_amount ?? 0,
                     'vat_percent' => $request->vat_percent ?? 0,
                     'ppn_amount' => $request->ppn_amount ?? 0,
@@ -438,7 +440,6 @@ class OfferController extends Controller
                     'subtotal_amount' => $request->subtotal_amount ?? 0,
                     'total_amount' => $request->total_amount ?? 0,
                     'status' => $status,
-                    'is_dp' => $request->boolean('is_dp'),
                     'created_by_id' => auth()->id(),
                     'created_by_type' => 'admin',
                 ]);
@@ -654,6 +655,8 @@ class OfferController extends Controller
                 'total_amount' => $request->total_amount ?? 0,
                 'vat_percent' => $request->vat_percent ?? 0,
                 'pph_percent' => $request->pph_percent ?? 0,
+                'is_dp' => $request->boolean('is_dp'),
+                'dp_amount' => $request->dp_amount ?? $offer->dp_amount,
                 'status' => 'in_review',
             ]);
 
@@ -753,6 +756,7 @@ class OfferController extends Controller
                 'pph_amount' => ['required', 'numeric', 'min:0'],
                 'is_draft' => ['required', 'boolean'],
                 'is_dp' => ['required', 'boolean'],
+                'dp_amount' => ['required_if:is_dp,true', 'numeric', 'min:1'],
             ]);
         }
 
@@ -817,6 +821,7 @@ class OfferController extends Controller
                     'subtotal_amount' => $validated['subtotal_amount'],
                     'total_amount' => $validated['total_amount'],
                     'is_dp' => $validated['is_dp'],
+                    'dp_amount',
                 ]);
             }
 

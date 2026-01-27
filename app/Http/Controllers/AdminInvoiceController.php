@@ -171,34 +171,114 @@ class AdminInvoiceController extends Controller
     public function storeCustomerPayment(Request $request)
     {
         $validated = $request->validate([
-            'invoice_id' => ['required'],
+            'invoice_id' => ['required', 'exists:invoices,id'],
             'proof_file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'company_bank_account_id' => ['required', 'exists:company_bank_accounts,id'],
+            'company_bank_account_id' => [
+                'required',
+                'exists:company_bank_accounts,id',
+            ],
         ]);
 
         return DB::transaction(function () use ($request) {
-            /** @var Invoice $invoice */
             $customer = auth('customer')->user();
 
-            $invoice = Invoice::lockForUpdate()->where('customer_id', $customer->customer_id)
-            ->findOrFail($request->invoice_id);
+            /** @var Invoice $invoice */
+            $invoice = Invoice::lockForUpdate()
+                ->where('customer_id', $customer->customer_id)
+                ->with([
+                    'offer',
+                    'payments' => fn ($q) => $q->where('status', 'approved'),
+                ])
+                ->findOrFail($request->invoice_id);
 
-            if (in_array($invoice->status, ['paid', 'cancelled'])) {
+            $offer = $invoice->offer;
+
+            /*
+            |--------------------------------------------------------------------------
+            | VALIDASI STATUS INVOICE
+            |--------------------------------------------------------------------------
+            */
+            if (in_array($invoice->status, ['paid', 'cancelled'], true)) {
                 abort(400, 'Invoice tidak dapat dibayar');
             }
 
-            $file = $request->file('proof_file');
-            $path = $file->store('invoice-payments', 'public');
+            /*
+            |--------------------------------------------------------------------------
+            | HITUNG PAYMENT APPROVED
+            |--------------------------------------------------------------------------
+            */
+            $approvedPayments = $invoice->payments;
+            $approvedCount = $approvedPayments->count();
+            $approvedAmount = $approvedPayments->sum('amount');
+
+            /*
+            |--------------------------------------------------------------------------
+            | TENTUKAN AMOUNT (SINGLE SOURCE OF TRUTH)
+            |--------------------------------------------------------------------------
+            */
+            if ((int) $offer->is_dp === 0) {
+                // NON DP → langsung lunas
+                if ($approvedCount >= 1) {
+                    abort(400, 'Pelunasan sudah dilakukan');
+                }
+
+                $amount = $invoice->total_amount;
+            } else {
+                // DP FLOW
+                if ($approvedCount === 0) {
+                    // PAYMENT PERTAMA → DP
+                    if ((float) $offer->dp_amount <= 0) {
+                        abort(400, 'DP amount tidak valid');
+                    }
+
+                    $amount = $offer->dp_amount;
+                } elseif ($approvedCount === 1) {
+                    // PAYMENT KEDUA → PELUNASAN
+                    $remaining = $invoice->total_amount - $approvedAmount;
+
+                    if ($remaining <= 0) {
+                        abort(400, 'Sisa pembayaran tidak valid');
+                    }
+
+                    $amount = $remaining;
+                } else {
+                    abort(400, 'Seluruh pembayaran sudah dilakukan');
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIMPAN BUKTI PEMBAYARAN
+            |--------------------------------------------------------------------------
+            */
+            $path = $request->file('proof_file')
+                ->store('invoice-payments', 'public');
 
             $invoice->payments()->create([
                 'payment_date' => now(),
+                'amount' => $amount,
                 'proof_file' => $path,
                 'company_bank_account_id' => $request->company_bank_account_id,
                 'status' => 'pending',
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSE MESSAGE
+            |--------------------------------------------------------------------------
+            */
+            $message = 'Bukti pembayaran berhasil dikirim dan menunggu verifikasi';
+
+            if ((int) $offer->is_dp === 1 && $approvedCount === 0) {
+                $message = 'Bukti pembayaran DP berhasil dikirim dan menunggu verifikasi';
+            }
+
+            if ((int) $offer->is_dp === 1 && $approvedCount === 1) {
+                $message = 'Bukti pembayaran pelunasan berhasil dikirim dan menunggu verifikasi';
+            }
+
             return response()->json([
-                'message' => 'Bukti pembayaran berhasil dikirim dan menunggu verifikasi admin',
+                'message' => $message,
             ]);
         });
     }
