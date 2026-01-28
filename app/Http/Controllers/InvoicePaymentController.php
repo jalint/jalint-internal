@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InvoicePayment;
+use App\Models\Offer;
 use Illuminate\Http\Request;
 
 class InvoicePaymentController extends Controller
@@ -136,5 +137,104 @@ class InvoicePaymentController extends Controller
                 ->where('status', 'rejected')
                 ->count(),
         ]);
+    }
+
+    public function show($paymentId)
+    {
+        $payment = InvoicePayment::with([
+            'invoice.offer.customer.customerContact',
+            'invoice.offer.samples.parameters.subkon',
+            'invoice.offer.samples.parameters.testParameter.sampleType',
+            'invoice.offer.documents',
+        ])->findOrFail($paymentId);
+
+        $invoice = $payment->invoice;
+        $offer = $invoice->offer;
+
+        /*
+        |--------------------------------------------------------------------------
+        | SAMPLE SUMMARY (Helper)
+        |--------------------------------------------------------------------------
+        */
+        $sampleSummary = $this->summarize($offer);
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESPONSE
+        |--------------------------------------------------------------------------
+        */
+        return response()->json([
+            'payment' => [
+                'id' => $payment->id,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'payment_date' => $payment->payment_date,
+            ],
+
+            'invoice' => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'total_amount' => $invoice->total_amount,
+            ],
+
+            'offer' => [
+                'id' => $offer->id,
+                'offer_number' => $offer->offer_number,
+                'title' => $offer->title,
+                'status' => $offer->status,
+                'is_dp' => $offer->is_dp,
+            ],
+
+            'customer' => [
+                'name' => $offer->customer->name,
+                'contact' => $offer->customer->customerContact,
+            ],
+
+            'samples' => $sampleSummary,
+        ]);
+    }
+
+    private function summarize(Offer $offer): array
+    {
+        return $offer->samples->map(function ($sample) {
+            $parameters = $sample->parameters;
+
+            /*
+            |--------------------------------------------------------------------------
+            | REGULASI
+            |--------------------------------------------------------------------------
+            | Ambil dari sampleType pertama (diasumsikan konsisten)
+            */
+            $sampleType = optional(
+                $parameters->first()?->testParameter
+            )->sampleType;
+
+            /*
+            |--------------------------------------------------------------------------
+            | CONCAT PARAMETER NAME
+            |--------------------------------------------------------------------------
+            */
+            $parameterNames = $parameters
+                ->map(fn ($param) => $param->testParameter->name)
+                ->unique()
+                ->implode(', ');
+
+            /*
+            |--------------------------------------------------------------------------
+            | TOTAL BIAYA
+            |--------------------------------------------------------------------------
+            */
+            $totalBiaya = $parameters->sum(function ($param) {
+                return $param->price * $param->qty;
+            });
+
+            return [
+                'produk_uji' => $sample->title,
+                'regulasi' => $sampleType?->regulation,
+                'parameter_uji' => $parameterNames,
+                'contoh_uji' => 1,
+                'total_biaya' => $totalBiaya,
+            ];
+        })->values()->toArray();
     }
 }

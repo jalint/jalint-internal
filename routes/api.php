@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\CompanyBankAccountController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CustomerBillingController;
 use App\Http\Controllers\CustomerContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOfferController;
@@ -110,6 +111,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('invoice-payments/summary', [InvoicePaymentController::class, 'summary']);
     Route::apiResource('invoice-payments', InvoicePaymentController::class);
+    Route::apiResource('customer-billings', CustomerBillingController::class);
 
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
