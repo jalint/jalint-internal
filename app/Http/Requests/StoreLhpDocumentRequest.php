@@ -56,7 +56,6 @@ class StoreLhpDocumentRequest extends FormRequest
 
             'details.*.sample_matrix_id' => [
                 'required',
-                
             ],
 
             'details.*.tanggal_pengambilan' => [
@@ -92,14 +91,10 @@ class StoreLhpDocumentRequest extends FormRequest
 
             'details.*.koordinat_lintang' => [
                 'nullable',
-                'numeric',
-                'between:-90,90',
             ],
 
             'details.*.koordinat_bujur' => [
                 'nullable',
-                'numeric',
-                'between:-180,180',
             ],
         ];
     }

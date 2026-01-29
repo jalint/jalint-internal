@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Offer;
 use App\Models\TaskLetter;
+use App\Queries\TaskLetterVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -80,13 +81,7 @@ class TaskLetterController extends Controller
         $startDate = $request->query('start_date');
         $endDate = $request->query('end_date');
 
-        $query = Offer::query()
-            ->whereHas('invoice')
-            ->with([
-                'customer:id,name',
-                'invoice:id,offer_id,invoice_number',
-                'taskLetter',
-            ]);
+        $query = TaskLetterVisibility::forRole($role);
 
         /*
         |--------------------------------------------------------------------------
@@ -428,10 +423,6 @@ class TaskLetterController extends Controller
         |--------------------------------------------------------------------------
         */
         if ($role === 'manager_teknis') {
-            if (!$taskLetter) {
-                return 'Belum Ada Surat Tugas';
-            }
-
             return match ($taskLetter->status) {
                 'pending' => 'Menunggu Konfirmasi Surat Tugas',
                 'approved',
@@ -447,14 +438,9 @@ class TaskLetterController extends Controller
         |--------------------------------------------------------------------------
         */
         if ($role === 'ppcu') {
-            if (!$taskLetter) {
-                return 'Belum Ada Surat Tugas';
-            }
-
             return match ($taskLetter->status) {
                 'approved' => 'Konfirmasi Surat Tugas',
                 'confirmed' => 'Surat Tugas Dilaksanakan',
-                'revised' => 'Direvisi',
                 default => 'Menunggu Proses',
             };
         }

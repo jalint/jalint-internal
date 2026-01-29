@@ -756,7 +756,7 @@ class OfferController extends Controller
                 'pph_amount' => ['required', 'numeric', 'min:0'],
                 'is_draft' => ['required', 'boolean'],
                 'is_dp' => ['required', 'boolean'],
-                'dp_amount' => ['required_if:is_dp,true', 'numeric', 'min:1'],
+                'dp_amount' => ['nullable', 'required_if:is_dp,true', 'numeric', 'min:1'],
             ]);
         }
 
@@ -821,7 +821,7 @@ class OfferController extends Controller
                     'subtotal_amount' => $validated['subtotal_amount'],
                     'total_amount' => $validated['total_amount'],
                     'is_dp' => $validated['is_dp'],
-                    'dp_amount',
+                    'dp_amount' => $validated['dp_amount'],
                 ]);
             }
 
