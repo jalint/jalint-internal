@@ -11,17 +11,31 @@ use Illuminate\Support\Facades\DB;
 
 class TaskLetterController extends Controller
 {
-    public function summary()
+    public function summary(Request $request)
     {
-        // $role = auth()->user()->roles->first()->name;
+        $role = auth()->user()
+            ->roles()
+            ->whereIn('name', ['ppcu', 'penyelia', 'manager_teknis'])
+            ->value('name');
 
-        $base = Offer::query()
-            ->whereHas('invoice')
-            ->whereBetween('created_at', [
+        $base = TaskLetterVisibility::forRole($role);
+
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
+            $base->whereBetween('created_at', [
                 now()->startOfMonth(),
                 now()->endOfMonth(),
             ]);
+        }
 
+        if ($request->filled('start_date')) {
+            $base->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $base->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        $summary = [];
         $summary['all'] = (clone $base)->count();
 
         if (auth()->user()->hasRole('penyelia')) {

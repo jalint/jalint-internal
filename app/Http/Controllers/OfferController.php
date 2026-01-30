@@ -382,19 +382,19 @@ class OfferController extends Controller
         }
 
         // ===== DATE FILTER =====
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
-
-        if ($startDate || $endDate) {
-            $query->whereBetween('offer_date', [
-                $startDate ? now()->parse($startDate)->startOfDay() : now()->subYears(50),
-                $endDate ? now()->parse($endDate)->endOfDay() : now()->addYears(50),
-            ]);
-        } else {
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
             $query->whereBetween('offer_date', [
                 now()->startOfMonth(),
                 now()->endOfMonth(),
             ]);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('offer_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('offer_date', '<=', $request->end_date);
         }
 
         $offers = $query->paginate($request->per_page ?? 15);

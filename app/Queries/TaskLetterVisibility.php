@@ -10,8 +10,8 @@ class TaskLetterVisibility
     public static function forRole(string $role)
     {
         return match ($role) {
-            'penyelia_lapangan' => self::penyeliaLapangan(),
-            'ppucu' => self::ppcu(),
+            'penyelia' => self::penyeliaLapangan(),
+            'ppcu' => self::ppcu(),
             'manager_teknis' => self::managerTeknis(),
             default => TaskLetter::query()->whereRaw('1=0'),
         };
@@ -39,9 +39,8 @@ class TaskLetterVisibility
     private static function managerTeknis()
     {
         return Offer::query()
-            ->whereHas('invoice')
             ->whereHas('taskLetter', function ($query) {
-                $query->whereIn('status', ['approved', 'pending', 'revised']);
+                $query->whereIn('status', ['approved', 'confirmed', 'pending', 'revised']);
             })
             ->with([
                 'customer:id,name',
