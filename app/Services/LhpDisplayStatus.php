@@ -94,18 +94,18 @@ class LhpDisplayStatus
             /* =====================================================
              | ADMIN PREMLIM
              ===================================================== */
-            'admin_premlim' => match (true) {
+            'admin_prelim' => match (true) {
                 $lhp->status === 'in_review'
-                && $lhp->currentReview?->role === 'admin_premlim' => 'Validasi LHP',
+                && $lhp->currentReview?->role === 'admin_prelim' => 'Validasi LHP',
 
                 $lhp->status === 'in_review' || $lhp->status === 'validated'
                 && $lhp->reviews()
                     ->where('decision', 'approved')
-                    ->where('role', 'admin_premlim')
+                    ->where('role', 'admin_prelim')
                     ->exists() => 'LHP Tervalidasi',
 
                 $lhp->status === 'revised'
-                && $lhp->latestRevisedReview?->role === 'admin_premlim' => 'LHP Direvisi',
+                && $lhp->latestRevisedReview?->role === 'admin_prelim' => 'LHP Direvisi',
 
                 default => 'Tidak Diketahui',
             },

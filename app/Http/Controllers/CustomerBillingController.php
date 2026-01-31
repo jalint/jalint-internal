@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LhpDocument;
 use App\Models\Offer;
 use Illuminate\Http\Request;
 
@@ -94,16 +95,36 @@ class CustomerBillingController extends Controller
         $customer = auth('customer')->user();
 
         $query = Offer::query()
+            // 1. SELECT UTAMA (OFFERS)
+            // Pastikan 'customer_id' terpilih agar relasi 'customer' jalan
+            // Pastikan 'created_at' terpilih agar 'orderByDesc' valid
+            // Pastikan 'is_dp' terpilih jika logic di frontend butuh info DP
+            ->select([
+                'offers.id',
+                'offers.customer_id',
+                'offers.title',
+                'offers.offer_number',
+                'offers.offer_date',
+                'offers.expired_date',
+                'offers.created_at',
+                'offers.is_dp',
+                'offers.status',
+            ])
             ->where('customer_id', $customer->customer_id)
             ->where('status', 'completed')
-            ->whereHas('invoice', function ($q) {
-                $q->whereBetween('created_at', [
-                    now()->startOfMonth(),
-                    now()->endOfMonth(),
-                ]);
-            })
+            ->whereHas('invoice')
+            // 2. SELECT PADA JOIN/RELASI (Eager Loading)
             ->with([
-                'invoice.payments',
+                // Ambil field invoice seperlunya.
+                // 'offer_id' WAJIB agar bisa nyambung ke parent offer.
+                // 'total_amount' WAJIB untuk logika perhitungan di bawah.
+                'invoice:id,offer_id,total_amount,status',
+
+                // Ambil field payment seperlunya.
+                // 'invoice_id' WAJIB agar bisa nyambung ke parent invoice.
+                'invoice.payments:id,invoice_id,amount,status',
+
+                // Customer (sudah oke)
                 'customer:id,name',
             ])
             ->orderByDesc('created_at');
@@ -153,6 +174,16 @@ class CustomerBillingController extends Controller
                 break;
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            // Menggunakan grouping (tanda kurung) agar logic OR tidak merusak filter Customer ID
+            $query->where(function ($q) use ($search) {
+                $q->where('offers.title', 'like', "%{$search}%")
+                  ->orWhere('offers.offer_number', 'like', "%{$search}%");
+            });
+        }
+
         $offers = $query->paginate($request->per_page ?? 15);
 
         /*
@@ -189,5 +220,74 @@ class CustomerBillingController extends Controller
         });
 
         return response()->json($offers);
+    }
+
+    public function show($id)
+    {
+        // 1. Ambil User Login
+        $customer = auth('customer')->user();
+
+        // 2. Query Data Offer Dasar
+        // Kita load relasi standar dulu (invoice & payments),
+        // TAPI lhpDocument JANGAN di-load dulu.
+        $offer = Offer::with([
+            'customer:id,name,address',
+            'customer.customerContact',
+            // 'samples',
+            'invoice.payments',
+        ])
+            ->where('customer_id', $customer->customer_id) // Pastikan milik customer ybs
+            ->findOrFail($id);
+
+        // 3. Logika Perhitungan Pembayaran
+        $invoice = $offer->invoice;
+
+        // Default values jika invoice belum dibuat admin
+        $totalTagihan = 0;
+        $totalTerbayar = 0;
+        $sisaTagihan = 0;
+        $isPaid = false;
+
+        if ($invoice) {
+            $totalTagihan = $invoice->total_amount;
+
+            // Hitung total yang statusnya 'approved'
+            $totalTerbayar = $invoice->payments
+                ->where('status', 'approved')
+                ->sum('amount');
+
+            // Hitung Sisa (Gunakan max(0) agar tidak minus jika ada kelebihan bayar dikit)
+            $sisaTagihan = max(0, $totalTagihan - $totalTerbayar);
+
+            // Tentukan status Lunas
+            // Dianggap lunas jika total terbayar >= total tagihan
+            $isPaid = $totalTerbayar >= $totalTagihan;
+        }
+
+        // 4. KONDISIONAL: Load LHP Document
+        // Jika lunas ($isPaid == true), baru kita ambil data LHP
+        if ($isPaid) {
+            $lhpDocument = LhpDocument::query()
+               ->with([
+                   'details',
+                   'details.lhpDocumentParamters',
+                   'details.lhpDocumentParamters.offerSampleParameter',
+                   'details.lhpDocumentParamters.offerSampleParameter.testParameter:id,test_method_id,name',
+                   'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
+               ])
+            ->where('offer_id', $offer->id)->get();
+        }
+
+        // 5. Format Data Tambahan (Append ke object Offer)
+        // Supaya frontend enak bacanya, kita buat property baru 'payment_summary'
+        $offer->payment_summary = [
+            'invoice_created' => $invoice ? true : false,
+            'status' => $isPaid ? 'Lunas' : 'Belum Lunas',
+            'total_bill' => $totalTagihan,      // Total yang harus dibayar
+            'total_paid' => $totalTerbayar,     // Sudah dibayar
+            'remaining_bill' => $sisaTagihan,       // Sisa tagihan
+        ];
+
+        return response()->json(['offer' => $offer, 'lhp_documents' => $lhpDocument]);
     }
 }

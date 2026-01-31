@@ -14,7 +14,7 @@ class LhpVisibility
             'penyelia_lab' => self::penyeliaLab(),
             'admin_input_lhp' => self::adminInputLHP(),
             'manager_teknis' => self::managerTeknis(),
-            'admin_premlim' => self::adminPremlim(),
+            'admin_prelim' => self::adminPrelim(),
             default => LhpDocument::query()->whereRaw('1=0'),
         };
     }
@@ -47,7 +47,7 @@ class LhpVisibility
             ->whereIn('status', ['in_review', 'validated', 'revised']);
     }
 
-    private static function adminPremlim()
+    private static function adminPrelim()
     {
         return LhpDocument::query()
         ->whereIn('status', ['in_review', 'validated', 'revised']);

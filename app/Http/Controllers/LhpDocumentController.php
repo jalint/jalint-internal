@@ -26,7 +26,7 @@ class LhpDocumentController extends Controller
             'penyelia_lab',
             'admin_input_lhp',
             'manager_teknis',
-            'admin_premlim',
+            'admin_prelim',
         ])
         ->value('name');
 
@@ -119,19 +119,19 @@ class LhpDocumentController extends Controller
 
                 break;
 
-            case 'admin_premlim':
+            case 'admin_prelim':
                 $summary['validasi_lhp'] = (clone $base)->where('status', 'in_review')
-                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
+                ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_prelim')
                 )
                 ->count();
 
                 $summary['lhp_tervalidasi'] = (clone $base)->whereIn('status', ['in_review', 'validated'])
-                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
+                ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_prelim')
                 )
                 ->count();
 
                 $summary['lhp_direvisi'] = (clone $base)->where('status', 'revised')
-                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
+                ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_prelim')
                 )->count();
 
                 break;
@@ -150,7 +150,7 @@ class LhpDocumentController extends Controller
                 'penyelia_lab',
                 'admin_input_lhp',
                 'manager_teknis',
-                'admin_premlim',
+                'admin_prelim',
             ])
             ->value('name');
 
@@ -287,18 +287,18 @@ class LhpDocumentController extends Controller
                 break;
 
                 /* ================= ADMIN PREMLIM ================= */
-            case 'admin_premlim':
+            case 'admin_prelim':
                 match ($filter) {
                     'validasi_lhp' => $query->where('status', 'in_review')
-                            ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_premlim')
+                            ->whereHas('currentReview', fn ($q) => $q->where('role', 'admin_prelim')
                             ),
 
                     'lhp_tervalidasi' => $query->whereIn('status', ['in_review', 'validated'])
-                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_premlim')
+                            ->whereHas('reviews', fn ($q) => $q->where('decision', 'approved')->where('role', 'admin_prelim')
                             ),
 
                     'lhp_direvisi' => $query->where('status', 'revised')
-                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_premlim')
+                            ->whereHas('latestRevisedReview', fn ($q) => $q->where('role', 'admin_prelim')
                             ),
 
                     default => null
@@ -518,6 +518,10 @@ class LhpDocumentController extends Controller
                 return response()->json([
                     'message' => 'LHP disetujui, lanjut ke tahap berikutnya',
                 ]);
+            }
+
+            if ($user->hasRole('admin_prelim') && $validated['decision'] == 'approved') {
+                Offer::query()->where('id', $lhpDocument->offer_id)->update(['status' => 'completed']);
             }
 
             $lhpDocument->update([

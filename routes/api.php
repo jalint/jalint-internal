@@ -110,7 +110,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('lhp-documents', LhpDocumentController::class);
 
     Route::get('invoice-payments/summary', [InvoicePaymentController::class, 'summary']);
+
     Route::apiResource('invoice-payments', InvoicePaymentController::class);
+    Route::get('customer-billings/summary', [CustomerBillingController::class, 'summary']);
     Route::apiResource('customer-billings', CustomerBillingController::class);
 
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);

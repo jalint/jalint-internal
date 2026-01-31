@@ -158,6 +158,15 @@ class InvoicePaymentController extends Controller
         */
         $sampleSummary = $this->summarize($offer);
 
+        $approvedPaidAmount = $invoice->payments()
+                            ->where('status', 'approved')
+                            ->sum('amount');
+
+        $remainingAmount = max(
+            $invoice->total_amount - $approvedPaidAmount,
+            0
+        );
+
         /*
         |--------------------------------------------------------------------------
         | RESPONSE
@@ -169,12 +178,15 @@ class InvoicePaymentController extends Controller
                 'status' => $payment->status,
                 'amount' => $payment->amount,
                 'payment_date' => $payment->payment_date,
+                'proof_file' => $payment->proof_file,
             ],
 
             'invoice' => [
                 'id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'total_amount' => $invoice->total_amount,
+                'paid_amount' => $approvedPaidAmount,
+                'remaining_amount' => $remainingAmount,
             ],
 
             'offer' => [
@@ -183,6 +195,14 @@ class InvoicePaymentController extends Controller
                 'title' => $offer->title,
                 'status' => $offer->status,
                 'is_dp' => $offer->is_dp,
+                'subtotal_amount' => $offer->subtotal_amount,
+                'total_amount' => $offer->total_amount,
+                'pph_percent' => $offer->pph_percent,
+                'pph_amount' => $offer->pph_amount,
+                'vat_percent' => $offer->vat_percent,
+                'ppn_amount' => $offer->ppn_amount,
+                'discount_amount' => $offer->discount_amount,
+                'dp_amount' => $offer->dp_amount,
             ],
 
             'customer' => [

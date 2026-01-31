@@ -17,4 +17,9 @@ class LhpDocumentDetail extends Model
     {
         return $this->hasMany(LhpDocumentParameter::class);
     }
+
+    public function sampleMatrix()
+    {
+        return $this->belongsTo(SampleMatrix::class);
+    }
 }
