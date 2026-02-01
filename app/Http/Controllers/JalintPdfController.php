@@ -400,6 +400,134 @@ class JalintPdfController extends Controller
             ->first();
     }
 
+    public function generateFPPCU()
+    {
+        $pdf = new JalintTFPDF();
+        $pdf->showFooter = false;
+        $pdf->AliasNbPages();
+        $pdf->AddPage('P', 'A4');
+
+        // Margin atas diperkecil sedikit agar aman
+        $pdf->SetTopMargin(10);
+
+        // --- Judul Atas ---
+        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->Cell(0, 5, 'FORMULIR PERMINTAAN PENGUJIAN CONTOH UJI', 0, 1, 'C');
+        $pdf->SetFont('DejaVu', 'B', 9);
+        $pdf->Cell(0, 5, 'JOB NUMBER: LAB-JLI-2502156', 0, 1, 'C');
+        $pdf->Ln(3); // Dikurangi dari 5
+
+        $pdf->SetFont('DejaVu', '', 9); // Font diperkecil sedikit ke 9
+        $lineHeight = 6; // Dikurangi dari 7
+
+        // --- Bagian Informasi Pelanggan ---
+        $this->rowWithDots($pdf, 'Nama Pelanggan', 'PT Siloam', $lineHeight);
+        // Untuk alamat, jika MultiCell memakan terlalu banyak ruang, pastikan rowWithDots menangani \n dengan baik
+        $this->rowWithDots($pdf, 'Alamat', 'Jl. Soekarno - Hatta, Kel. Paal Merah, Kec. Jambi Selatan, Jambi', $lineHeight);
+        $this->rowWithDots($pdf, 'Personil Penghubung', 'Jeremiah', $lineHeight);
+        $this->rowWithDots($pdf, 'No. Telp/HP', '0821-7542-1256', $lineHeight);
+        $this->rowWithDots($pdf, 'Email Penerima Laporan', '-', $lineHeight);
+        $this->rowWithDots($pdf, 'Nama Kegiatan', 'Analisa Contoh Uji Kualitas Air Bulan Februari Tahun 2025', $lineHeight);
+        $this->rowWithDots($pdf, 'Tanggal Diterima', '06/02/2025', $lineHeight);
+
+        $pdf->Ln(4);
+
+        // --- Header Tabel (Disesuaikan lebarnya agar total ~190mm) ---
+        $pdf->SetFont('DejaVu', 'B', 8);
+        $hHeader = 10;
+        $pdf->Cell(10, $hHeader, 'No', 1, 0, 'C');
+        $pdf->Cell(25, $hHeader, 'Bahan Produk', 1, 0, 'C');
+        $pdf->Cell(20, $hHeader, 'Jml Wadah', 1, 0, 'C'); // Diaktifkan kembali
+        $pdf->Cell(35, $hHeader, 'Jenis Wadah', 1, 0, 'C');
+        $pdf->Cell(25, $hHeader, 'Volume', 1, 0, 'C');
+        $pdf->Cell(30, $hHeader, 'Pengawetan', 1, 0, 'C');
+        $pdf->Cell(35, $hHeader, 'Keterangan', 1, 1, 'C');
+
+        // --- Isi Tabel (15 Baris) ---
+        $pdf->SetFont('DejaVu', '', 8);
+        $data = [
+            ['1.', 'Air', '3', 'Jerigen', '500 ml', 'HNO3', 'Sudah'],
+            ['2.', 'Air', '5', 'Jerigen', '1 L', '-', 'Pengawet'],
+        ];
+
+        $rowHeight = 5.5; // Tinggi baris isi tabel agar muat 15 baris
+        for ($i = 0; $i < 23; ++$i) {
+            $no = $data[$i][0] ?? '';
+            $bahan = $data[$i][1] ?? '';
+            $jml = $data[$i][2] ?? '';
+            $jenis = $data[$i][3] ?? '';
+            $vol = $data[$i][4] ?? '';
+            $awet = $data[$i][5] ?? '';
+            $ket = $data[$i][6] ?? '';
+
+            $pdf->Cell(10, $rowHeight, $no, 1, 0, 'C');
+            $pdf->Cell(25, $rowHeight, $bahan, 1, 0, 'L');
+            $pdf->Cell(20, $rowHeight, $jml, 1, 0, 'C');
+            $pdf->Cell(35, $rowHeight, $jenis, 1, 0, 'L');
+            $pdf->Cell(25, $rowHeight, $vol, 1, 0, 'C');
+            $pdf->Cell(30, $rowHeight, $awet, 1, 0, 'L');
+            $pdf->Cell(35, $rowHeight, $ket, 1, 1, 'L');
+        }
+
+        $pdf->Ln(3);
+
+        // --- Status Contoh Uji (Checkbox) ---
+        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->Cell(35, 5, 'Status Contoh Uji :', 0, 0);
+
+        // Checkbox 1
+        $pdf->Cell(5, 5, 'V', 1, 0, 'C');
+        $pdf->Cell(40, 5, ' Diantar Pelanggan', 0, 1);
+
+        // Checkbox 2 (Indentasi)
+        $pdf->Cell(35, 5, '', 0, 0);
+        $pdf->Cell(5, 5, '', 1, 0, 'C');
+        $pdf->Cell(40, 5, ' Diambil Oleh Laboratorium', 0, 1);
+
+        $pdf->Ln(6);
+
+        // --- Tanda Tangan ---
+        $pdf->SetFont('DejaVu', '', 9);
+        $currY = $pdf->GetY();
+
+        $pdf->Cell(45, 5, 'PPCU/Perwakilan Pelanggan,', 0, 0, 'C');
+        $pdf->Cell(222, 5, 'Jambi, 06/02/2025', 0, 1, 'C');
+        $pdf->Cell(100, 5, '', 0, 0, 'C');
+        $pdf->Cell(125, 5, 'Penerima,', 0, 1, 'C');
+
+        $pdf->Ln(12); // Ruang tanda tangan sedikit dipadatkan
+
+        $pdf->Cell(45, 5, '( Dimas Rahmat Hidayat )', 0, 0, 'C');
+        $pdf->Cell(125, 5, '( Indah Ayu )', 0, 1, 'R');
+
+        return response($pdf->Output('S', 'Formulir_Permintaan.pdf'))
+                ->header('Content-Type', 'application/pdf');
+    }
+
+    // Fungsi Pembantu untuk baris dengan titik-titik
+    private function rowWithDots($pdf, $label, $value, $h, $isMulti = false)
+    {
+        $pdf->Cell(45, $h, $label, 0, 0);
+        $pdf->Cell(5, $h, ':', 0, 0);
+
+        $x = $pdf->GetX();
+        $y = $pdf->GetY();
+
+        // Cetak titik-titik sebagai latar belakang
+        $pdf->SetTextColor(150);
+        $pdf->Cell(0, $h, '.........................................................................................................', 0, 0);
+
+        // Cetak nilai aslinya di atas titik-titik
+        $pdf->SetXY($x, $y);
+        $pdf->SetTextColor(0, 0, 255); // Warna biru seperti tulisan tangan
+        if ($isMulti) {
+            $pdf->MultiCell(0, $h, $value, 0, 'L');
+        } else {
+            $pdf->Cell(0, $h, $value, 0, 1);
+        }
+        $pdf->SetTextColor(0);
+    }
+
     private function buildDataUjiForPdf($offer)
     {
         return $offer->samples->map(function ($sample) {

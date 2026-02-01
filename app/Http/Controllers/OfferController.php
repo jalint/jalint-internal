@@ -20,6 +20,9 @@ class OfferController extends Controller
 {
     public function summary(Request $request)
     {
+        $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
+        $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
+
         $role = auth()->user()
                 ->roles()
                 ->whereIn('name', [
@@ -41,11 +44,11 @@ class OfferController extends Controller
         }
 
         if ($request->filled('start_date')) {
-            $base->whereDate('offer_date', '>=', $request->start_date);
+            $base->whereDate('offer_date', '>=', $startDate);
         }
 
         if ($request->filled('end_date')) {
-            $base->whereDate('offer_date', '<=', $request->end_date);
+            $base->whereDate('offer_date', '<=', $endDate);
         }
 
         $summary = [];
@@ -262,6 +265,9 @@ class OfferController extends Controller
 
     public function index(Request $request)
     {
+        $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
+        $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
+
         $role = auth()->user()
                 ->roles()
                 ->whereIn('name', [
@@ -390,11 +396,11 @@ class OfferController extends Controller
         }
 
         if ($request->filled('start_date')) {
-            $query->whereDate('offer_date', '>=', $request->start_date);
+            $query->whereDate('offer_date', '>=', $startDate);
         }
 
         if ($request->filled('end_date')) {
-            $query->whereDate('offer_date', '<=', $request->end_date);
+            $query->whereDate('offer_date', '<=', $endDate);
         }
 
         $offers = $query->paginate($request->per_page ?? 15);
@@ -936,34 +942,55 @@ class OfferController extends Controller
     {
         $offers = Offer::query()
             ->select([
-                'offers.id as offer_id',
+                'offers.id',
                 'offers.offer_number',
                 'offers.title',
-                'customers.name as customer_name',
+                'offers.customer_id',
+                'offers.is_dp',
             ])
-            ->join('customers', 'customers.id', '=', 'offers.customer_id')
-            ->withCount('samples') // <<< TOTAL OFFER SAMPLE
+            ->with([
+                'customer:id,name',
+                'customer.customerContact:id,customer_id,name,position,phone,email',
+            ])
+            ->withCount('samples')
             ->where('offers.status', 'approved')
-            ->whereHas('invoice', function ($q) {
-                $q->where(function ($q) {
-                    // ada pembayaran approved
-                    $q->whereHas('payments', function ($p) {
-                        $p->where('status', 'approved');
-                    })
-                    // ATAU invoice tanpa DP
-                    ->orWhere('is_dp', 0);
+            ->whereDoesntHave('lhpDocument')
+            ->whereHas('invoice', function ($invoice) {
+                $invoice->where(function ($q) {
+                    $q
+                    // NON DP → cukup ada invoice
+                    ->whereHas('offer', fn ($o) => $o->where('is_dp', 0))
+
+                    // DP → minimal 1 pembayaran approved
+                    ->orWhereHas('payments', fn ($p) => $p->where('status', 'approved')
+                    );
                 });
             })
-            ->whereDoesntHave('lhpDocument')
             ->orderByDesc('offers.created_at')
             ->get()
-            ->map(fn ($offer) => [
-                'offer_id' => $offer->offer_id,
-                'offer_number' => $offer->offer_number,
-                'title' => $offer->title,
-                'customer_name' => $offer->customer_name,
-                'total_samples' => $offer->samples_count, // naming API rapi
-            ]);
+            ->map(function ($offer) {
+                $contact = $offer->customer->customerContact;
+
+                return [
+                    'offer_id' => $offer->id,
+                    'offer_number' => $offer->offer_number,
+                    'title' => $offer->title,
+
+                    'customer' => [
+                        'id' => $offer->customer->id,
+                        'name' => $offer->customer->name,
+                    ],
+
+                    'customer_contact' => $contact ? [
+                        'name' => $contact->name,
+                        'position' => $contact->position,
+                        'phone' => $contact->phone,
+                        'email' => $contact->email,
+                    ] : null,
+
+                    'total_samples' => $offer->samples_count,
+                ];
+            });
 
         return response()->json($offers);
     }

@@ -334,6 +334,20 @@ class LhpDocumentController extends Controller
 
             $lhp->details()->createMany($request['details']);
 
+            if ($request->has('fppcu')) {
+                foreach ($request->fppcu as $fppcuData) {
+                    // code...
+                    $fppcu = $lhp->fppcu()->create([
+                        'nama_bahan_produk' => $fppcuData['nama_bahan_produk'],
+                        'jumlah_wadah_contoh_uji' => $fppcuData['jumlah_wadah_contoh_uji'],
+                    ]);
+
+                    if (isset($fppcuData['details']) && is_array($fppcuData['details'])) {
+                        $fppcu->fppcuParameters()->createMany($fppcuData['details']);
+                    }
+                }
+            }
+
             return response()->json([
                 'message' => 'LHP berhasil dibuat',
                 'data' => $lhp->load('details'),
@@ -346,6 +360,7 @@ class LhpDocumentController extends Controller
         $lhpDocument = LhpDocument::query()
                ->with([
                    'details',
+                   'details.sampleMatrix',
                    'details.lhpDocumentParamters',
                    'details.lhpDocumentParamters.offerSampleParameter',
                    'details.lhpDocumentParamters.offerSampleParameter.testParameter:id,test_method_id,name',

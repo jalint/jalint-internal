@@ -120,3 +120,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugasTFPDF']);
 Route::get('invoices/print', [JalintPdfController::class, 'printInvoice']);
+Route::get('ppcu/print', [JalintPdfController::class, 'generateFPPCU']);

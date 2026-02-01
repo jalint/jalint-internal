@@ -14,13 +14,13 @@ class CustomerBillingController extends Controller
 
         $base = Offer::query()
             ->where('customer_id', $customer->customer_id)
-            ->where('status', 'completed')
-            ->whereHas('invoice', function ($q) {
-                $q->whereBetween('created_at', [
-                    now()->startOfMonth(),
-                    now()->endOfMonth(),
-                ]);
-            });
+            ->where('status', 'completed');
+        // ->whereHas('invoice', function ($q) {
+        //     $q->whereBetween('created_at', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // });
 
         return response()->json([
             'all' => (clone $base)->count(),
@@ -236,6 +236,7 @@ class CustomerBillingController extends Controller
             // 'samples',
             'invoice.payments',
         ])
+            ->withCount('samples')
             ->where('customer_id', $customer->customer_id) // Pastikan milik customer ybs
             ->findOrFail($id);
 
@@ -270,9 +271,11 @@ class CustomerBillingController extends Controller
             $lhpDocument = LhpDocument::query()
                ->with([
                    'details',
+                   'details.sampleMatrix',
                    'details.lhpDocumentParamters',
                    'details.lhpDocumentParamters.offerSampleParameter',
                    'details.lhpDocumentParamters.offerSampleParameter.testParameter:id,test_method_id,name',
+                   'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
                    'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
                ])
             ->where('offer_id', $offer->id)->get();
@@ -288,6 +291,6 @@ class CustomerBillingController extends Controller
             'remaining_bill' => $sisaTagihan,       // Sisa tagihan
         ];
 
-        return response()->json(['offer' => $offer, 'lhp_documents' => $lhpDocument]);
+        return response()->json(['offer' => $offer, 'lhp_documents' => $lhpDocument ?? []]);
     }
 }

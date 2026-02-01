@@ -22,6 +22,11 @@ class LhpDocument extends Model
         return $this->hasMany(LhpDocumentDetail::class);
     }
 
+    public function fppcu()
+    {
+        return $this->hasMany(Fppcu::class);
+    }
+
     public function reviews()
     {
         return $this->hasMany(LhpReview::class);

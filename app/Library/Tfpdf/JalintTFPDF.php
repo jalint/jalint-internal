@@ -6,7 +6,8 @@ require_once app_path('Library/Tfpdf/tfpdf.php');
 
 class JalintTFPDF extends \tFPDF
 {
-    public $showHeaderFooter = true;
+    public $showHeader = true;
+    public $showFooter = true;
 
     public function __construct()
     {
@@ -27,19 +28,19 @@ class JalintTFPDF extends \tFPDF
 
     public function Header()
     {
-        if ($this->showHeaderFooter) {
+        if ($this->showHeader) {
             $baseline = 25;
 
             // Image handling tetap sama
             $this->Image(public_path('assets/images/rec_1.png'), 0, $baseline - 20, 14, 18);
             $this->Image(public_path('assets/images/rec_2.png'), 12, $baseline - 20, 4, 18);
             $this->Image(public_path('assets/images/jalint_icon.png'), 25, $baseline - 20, 18, 18);
-            $this->Image(public_path('assets/images/jalint.png'), 50, $baseline - 20, 38, 18);
+            $this->Image(public_path('assets/images/jalint.png'), 50, $baseline - 20, 43, 18);
             $this->Image(public_path('assets/images/vec_1.png'), 96, $baseline - 20, 2, 18);
             $this->Image(public_path('assets/images/vec_2.png'), 100, $baseline - 20, 2, 18);
-            $this->Image(public_path('assets/images/jalint_kan.png'), 110, $baseline - 20, 15, 18);
-            $this->Image(public_path('assets/images/lkh.png'), 135, $baseline - 20, 18, 18);
-            $this->Image(public_path('assets/images/kemen.png'), 165, $baseline - 20, 20, 20);
+            $this->Image(public_path('assets/images/jalint_kan.png'), 110, $baseline - 20, 20, 18);
+            $this->Image(public_path('assets/images/lkh.png'), 135, $baseline - 20, 21, 18);
+            $this->Image(public_path('assets/images/kemen.png'), 160, $baseline - 20, 25, 20);
             $this->Image(public_path('assets/images/rec_2.png'), 190, $baseline - 20, 4, 18);
             $this->Image(public_path('assets/images/rec_1.png'), 194, $baseline - 20, 19, 18);
 
@@ -82,7 +83,7 @@ class JalintTFPDF extends \tFPDF
 
     public function Footer()
     {
-        if ($this->showHeaderFooter) {
+        if ($this->showFooter) {
             // Naikkan footer, jangan mepet
             $this->SetY(-20);
 
