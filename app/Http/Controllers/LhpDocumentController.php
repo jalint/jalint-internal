@@ -380,11 +380,12 @@ class LhpDocumentController extends Controller
                 'cc.name as pic_name',
                 'cc.phone as pic_phone',
                 'cc.position as pic_position',
+                'cc.email as pic_email',
             ])
             ->join('customers', 'customers.id', '=', 'offers.customer_id')
             ->leftJoinSub(
                 DB::table('customer_contacts')
-                    ->select('customer_id', 'name', 'position', 'phone'),
+                    ->select('customer_id', 'name', 'position', 'phone', 'email'),
                 'cc',
                 'cc.customer_id',
                 '=',
@@ -411,6 +412,7 @@ class LhpDocumentController extends Controller
                 'pic_name' => $offer->pic_name,
                 'pic_phone' => $offer->pic_phone,
                 'pic_position' => $offer->pic_position,
+                'pic_email' => $offer->pic_email,
                 'total_samples' => $offer->samples_count,
             ],
             'lhp_document' => $lhpDocument,

@@ -947,6 +947,7 @@ class OfferController extends Controller
                 'offers.title',
                 'offers.customer_id',
                 'offers.is_dp',
+                'offers.location',
             ])
             ->with([
                 'customer:id,name',
@@ -975,6 +976,7 @@ class OfferController extends Controller
                     'offer_id' => $offer->id,
                     'offer_number' => $offer->offer_number,
                     'title' => $offer->title,
+                    'location' => $offer->location,
 
                     'customer' => [
                         'id' => $offer->customer->id,
