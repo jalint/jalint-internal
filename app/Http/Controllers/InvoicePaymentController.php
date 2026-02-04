@@ -33,7 +33,7 @@ class InvoicePaymentController extends Controller
         */
         $query = InvoicePayment::query()
             ->with([
-                'invoice.offer:id,offer_number,title,offer_date,is_dp,total_amount,faktur_pajak_path',
+                'invoice.offer:id,offer_number,title,offer_date,is_dp,total_amount',
             ])
             ->orderByDesc('created_at');
 
