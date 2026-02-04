@@ -22,6 +22,7 @@ return new class extends Migration {
                 ->cascadeOnDelete();
 
             $table->string('invoice_number')->unique();
+            $table->string('faktur_pajak_path')->nullable();
 
             $table->decimal('subtotal_amount', 15, 2);
             $table->decimal('discount_amount', 15, 2)->default(0);

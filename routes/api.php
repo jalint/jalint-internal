@@ -114,10 +114,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('invoice-payments', InvoicePaymentController::class);
     Route::get('customer-billings/summary', [CustomerBillingController::class, 'summary']);
     Route::apiResource('customer-billings', CustomerBillingController::class);
-
+    Route::post('/invoices/{invoice}/faktur-pajak', [InvoicePaymentController::class, 'uploadFakturPajak']);
     Route::get('dashboards', [DashboardController::class, 'dashboardSummary']);
 });
 
 Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugasTFPDF']);
-Route::get('invoices/print', [JalintPdfController::class, 'printInvoice']);
+Route::get('invoices/{id}/print', [JalintPdfController::class, 'printInvoice']);
 Route::get('ppcu/print', [JalintPdfController::class, 'generateFPPCU']);

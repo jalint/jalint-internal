@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\Offer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class InvoicePaymentController extends Controller
 {
@@ -212,6 +217,61 @@ class InvoicePaymentController extends Controller
 
             'samples' => $sampleSummary,
         ]);
+    }
+
+    public function uploadFakturPajak(Request $request, Invoice $invoice)
+    {
+        // =========================
+        // VALIDASI
+        // =========================
+        $validated = $request->validate([
+            'faktur_pajak' => ['required', 'file', 'mimes:pdf', 'max:5120'],
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // =========================
+            // HAPUS FILE LAMA (jika ada)
+            // =========================
+            if ($invoice->faktur_pajak_path && Storage::disk('local')->exists($invoice->faktur_pajak_path)) {
+                Storage::disk('local')->delete($invoice->faktur_pajak_path);
+            }
+
+            // =========================
+            // SIMPAN FILE BARU
+            // =========================
+            $file = $validated['faktur_pajak'];
+            $filename = Str::uuid().'.pdf';
+
+            $path = $file->storeAs('faktur-pajak', $filename, 'local');
+
+            // =========================
+            // UPDATE INVOICE
+            // =========================
+            $invoice->update([
+                'faktur_pajak_path' => $path,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Faktur pajak berhasil diunggah.',
+                'path' => $path,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            // optional: log error
+            Log::error('Upload faktur pajak gagal', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Gagal mengunggah faktur pajak.',
+            ], 500);
+        }
     }
 
     private function summarize(Offer $offer): array

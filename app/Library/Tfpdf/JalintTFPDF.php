@@ -12,6 +12,7 @@ class JalintTFPDF extends \tFPDF
     public function __construct()
     {
         parent::__construct('P', 'mm', 'A4');
+        $this->AliasNbPages();
         $this->SetMargins(13, 10, 13);
         $this->SetAutoPageBreak(true, 25);
 

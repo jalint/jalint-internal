@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Library\Fpdf\JalintPDF;
 use App\Library\Tfpdf\JalintTFPDF;
+use App\Models\Invoice;
 use App\Models\Offer;
+use App\Utils\AmountToWordsUtil;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -582,7 +584,7 @@ class JalintPdfController extends Controller
         );
     }
 
-    public function printInvoice()
+    public function printInvoice(Request $request)
     {
         $pdf = new JalintTFPDF();
 
@@ -591,107 +593,161 @@ class JalintPdfController extends Controller
         $pdf->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.ttf', true);
         $pdf->AddFont('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf', true);
 
+        $customerAccount = auth('customer')->user();
+
+        $invoices = Invoice::query()
+        ->where('id', $request->id)
+        ->when($customerAccount?->customer_id, function ($query) use ($customerAccount) {
+            $query->where('customer_id', $customerAccount->customer_id);
+        })
+        ->with(['customer', 'customer.customerContact', 'offer'])
+        ->first();
+
+        // dd($invoices->customer->customerContact->name);
         // ==========================================
         // HALAMAN 1: SURAT (PAKAI HEADER & FOOTER)
         // ==========================================
         $pdf->showHeaderFooter = true; // Set TRUE DULU sebelum AddPage
         $pdf->AddPage('P');
-        $this->buatHalamanSurat($pdf);
+        $this->buatHalamanSurat($pdf, $invoices);
 
         // ==========================================
         // HALAMAN 2: KWITANSI (MATIKAN SEMUA)
         // ==========================================
         $pdf->showHeaderFooter = true; // Set FALSE DULU sebelum AddPage
         $pdf->AddPage('L', [210, 148]);
-        $this->buatHalamanKwitansi($pdf);
+        $this->buatHalamanKwitansi($pdf, $invoices);
 
         // ==========================================
         // HALAMAN 3: INVOICE (PAKAI HEADER & FOOTER)
         // ==========================================
         $pdf->showHeaderFooter = true; // Set TRUE DULU sebelum AddPage
         $pdf->AddPage('P');
-        $this->buatHalamanInvoice($pdf);
+        $this->buatHalamanInvoice($pdf, $invoices);
 
         return response($pdf->Output('S', 'Dokumen_Penagihan.pdf'))
                 ->header('Content-Type', 'application/pdf');
     }
 
-    private function buatHalamanSurat($pdf)
+    private function buatHalamanSurat($pdf, $invoices)
     {
+        // --- Data dasar ---
+        $customer = $invoices->customer;
+        $customerName = $customer->name;
+        $contactName = $customer->customerContact->name;
+        $alamat = "{$customer->city} - {$customer->province}";
+        $total = 'Rp '.number_format($invoices->total_amount, 0, ',', '.');
+        $isPPN = $invoices->vat_percent ? ' dengan PPN' : '';
+        $tanggalSurat = Carbon::parse($invoices->issued_at)
+                                ->locale('id')
+                                ->translatedFormat('d F Y');
+        $judulPenawaran = $invoices->offer->title;
+        // --- Header tanggal ---
         $pdf->SetFont('DejaVu', '', 11);
-        $pdf->Cell(0, 5, 'Jambi, 20 Desember 2025.', 0, 1, 'R');
+        $pdf->Cell(0, 5, "Jambi, {$tanggalSurat}", 0, 1, 'R');
         $pdf->Ln(10);
 
-        // --- Bagian Nomor, Lampiran, Perihal ---
-        $pdf->Cell(25, 6, 'Nomor', 0, 0);
-        $pdf->Cell(5, 6, ':', 0, 0);
-        $pdf->Cell(0, 6, '1648/Inv/Jalint-Lab/XII/2025.', 0, 1);
-
-        $pdf->Cell(25, 6, 'Lampiran', 0, 0);
-        $pdf->Cell(5, 6, ':', 0, 0);
-        $pdf->Cell(0, 6, '1 (satu) berkas', 0, 1);
+        // --- Nomor / Lampiran / Perihal ---
+        $this->barisInfo($pdf, 'Nomor', $invoices->invoice_number);
+        $this->barisInfo($pdf, 'Lampiran', '1 (satu) berkas');
 
         $pdf->Cell(25, 6, 'Perihal', 0, 0);
         $pdf->Cell(5, 6, ':', 0, 0);
         $pdf->SetFont('DejaVu', 'B', 11);
         $pdf->Cell(0, 6, 'Permohonan Pembayaran Pengujian Sampel', 0, 1);
+        $pdf->SetFont('DejaVu', '', 11);
 
         $pdf->Ln(10);
 
-        // --- Alamat Tujuan ---
+        // --- Tujuan surat ---
         $pdf->SetFont('DejaVu', 'B', 11);
         $pdf->Cell(0, 6, 'Kepada Yth :', 0, 1);
-        $pdf->Cell(0, 6, 'PT. PERSADA ALAM JAYA', 0, 1);
+        $pdf->Cell(0, 6, $customerName, 0, 1);
+
         $pdf->SetFont('DejaVu', '', 11);
-        $pdf->Cell(0, 6, 'U.p Bapak M Nur Kholis', 0, 1);
+        $pdf->Cell(0, 6, "U.p {$contactName}", 0, 1);
         $pdf->Cell(0, 6, 'di', 0, 1);
-        $pdf->Cell(0, 6, 'Suban - Batang Asam', 0, 1);
+        $pdf->Cell(0, 6, $alamat, 0, 1);
 
         $pdf->Ln(12);
 
-        // --- Isi Surat ---
+        // --- Isi surat ---
         $pdf->Cell(0, 6, 'Dengan hormat,', 0, 1);
         $pdf->Ln(2);
 
-        $text1 = 'Bersama ini kami mengajukan permohonan pembayaran Pengujian Sampel Kualitas Air Limbah Produksi dan Air Limbah Domestik Bulan Desember Tahun 2025 PT. Persada Alam Jaya sebesar Rp1.177.200,00 dengan PPN.';
-        $pdf->MultiCell(0, 6, $text1, 0, 'L');
+        $isi = "Bersama ini kami mengajukan permohonan pembayaran {$judulPenawaran} {$customerName} "
+             ."sebesar {$total}{$isPPN}.";
+
+        $pdf->MultiCell(0, 6, $isi);
 
         $pdf->Ln(5);
         $pdf->Cell(0, 6, 'Bersama ini dilampirkan dokumen berupa :', 0, 1);
-        $pdf->Cell(10, 6, '1.', 0, 0);
-        $pdf->Cell(0, 6, 'Invoice', 0, 1);
-        $pdf->Cell(10, 6, '2.', 0, 0);
-        $pdf->Cell(0, 6, 'Kwitansi', 0, 1);
-        $pdf->Cell(10, 6, '3.', 0, 0);
-        $pdf->Cell(0, 6, 'Faktur Pajak', 0, 1);
+
+        $lampiran = ['Invoice', 'Kwitansi'];
+        if ($invoices->vat_percent) {
+            $lampiran[] = 'Faktur Pajak';
+        }
+
+        foreach ($lampiran as $i => $item) {
+            $pdf->Cell(10, 6, ($i + 1).'.', 0, 0);
+            $pdf->Cell(0, 6, $item, 0, 1);
+        }
 
         $pdf->Ln(5);
-        $pdf->Cell(0, 6, 'Demikian surat ini kami sampaikan dan atas kerjasamanya diucapkan terima kasih.', 0, 1);
+        $pdf->Cell(
+            0,
+            6,
+            'Demikian surat ini kami sampaikan dan atas kerjasamanya diucapkan terima kasih.',
+            0,
+            1
+        );
 
         $pdf->Ln(20);
 
-        // --- Bagian Tanda Tangan (Disebelah Kanan) ---
-        $startX = 120; // Atur posisi horizontal tanda tangan
+        // --- Tanda tangan ---
+        $startX = 120;
         $pdf->SetX($startX);
-        $pdf->Cell(0, 6, 'Jalint Lab', 0, 1, 'L');
+        $pdf->Cell(0, 6, 'Jalint Lab', 0, 1);
         $pdf->SetX($startX);
-        $pdf->Cell(0, 6, 'a.n Direktur', 0, 1, 'L');
+        $pdf->Cell(0, 6, 'a.n Direktur', 0, 1);
 
-        // Simulasi tempat tanda tangan & stempel
         $pdf->Ln(15);
 
         $pdf->SetX($startX);
         $pdf->SetFont('DejaVu', 'B', 11);
-        $pdf->Cell(0, 6, 'Retni Azmalia, S.E', 0, 1, 'L');
+        $pdf->Cell(0, 6, 'Retni Azmalia, S.E', 0, 1);
+
         $pdf->SetX($startX);
         $pdf->SetFont('DejaVu', '', 11);
-        $pdf->Cell(0, 6, 'Manajer Keuangan', 0, 1, 'L');
+        $pdf->Cell(0, 6, 'Manajer Keuangan', 0, 1);
     }
 
-    private function buatHalamanKwitansi($pdf)
+    /**
+     * Helper baris label : value.
+     */
+    private function barisInfo($pdf, string $label, string $value): void
+    {
+        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->Cell(25, 6, $label, 0, 0);
+        $pdf->Cell(5, 6, ':', 0, 0);
+        $pdf->Cell(0, 6, $value, 0, 1);
+    }
+
+    private function buatHalamanKwitansi($pdf, $invoices)
     {
         // 1. Tetap aktifkan AutoPageBreak tapi dengan margin bawah yang aman bagi Footer
         $pdf->SetAutoPageBreak(true, 25);
+
+        $customer = $invoices->customer;
+        $customerName = $customer->name;
+        $contactName = $customer->customerContact->name;
+        $alamat = "{$customer->city} - {$customer->province}";
+        $total = 'Rp '.number_format($invoices->total_amount, 0, ',', '.');
+        $isPPN = $invoices->vat_percent ? ' dengan PPN' : '';
+        $tanggalSurat = Carbon::parse($invoices->issued_at)
+                                ->locale('id')
+                                ->translatedFormat('d F Y');
+        $judulPenawaran = $invoices->offer->title;
 
         // 2. Tentukan area kerja (Safe Zone)
         // Header berakhir di Y=27, Footer mulai di Y=128 (pada tinggi A5 148mm)
@@ -713,7 +769,7 @@ class JalintPdfController extends Controller
         $pdf->Cell(40, 10, 'Telah terima dari', 0, 0);
         $pdf->Cell(5, 10, ':', 0, 0);
         $pdf->SetFont('DejaVu', 'B', 12);
-        $pdf->Cell(0, 10, 'PT. PERSADA ALAM JAYA', 0, 1);
+        $pdf->Cell(0, 10, $customerName, 0, 1);
 
         // --- Baris: Uang sejumlah ---
         $pdf->SetX(15);
@@ -721,7 +777,7 @@ class JalintPdfController extends Controller
         $pdf->Cell(40, 10, 'Uang sejumlah', 0, 0);
         $pdf->Cell(5, 10, ':', 0, 0);
         $pdf->SetFont('DejaVu', 'BI', 11); // Ukuran font diperkecil sedikit
-        $pdf->Cell(0, 10, 'Satu juta seratus tujuh puluh tujuh ribu dua ratus rupiah', 0, 1);
+        $pdf->Cell(0, 10, AmountToWordsUtil::toWords($invoices->total_amount), 0, 1);
 
         // --- Baris: Untuk Pembayaran ---
         $pdf->SetX(15);
@@ -729,14 +785,14 @@ class JalintPdfController extends Controller
         $pdf->Cell(40, 8, 'Untuk Pembayaran', 0, 0);
         $pdf->Cell(5, 8, ':', 0, 0);
         // MultiCell dipersempit lebarnya (90mm) agar tidak menabrak tanda tangan
-        $pdf->MultiCell(90, 7, 'Pengujian Sampel Kualitas Air Limbah Produksi dan Air Limbah Domestik Bulan Desember Tahun 2025 PT. Persada Alam Jaya.', 0, 'L');
+        $pdf->MultiCell(90, 7, "{$judulPenawaran} {$customerName}.", 0, 'L');
 
         // --- Baris: Nominal (Box Abu-abu) ---
         // Diposisikan relatif terhadap startY
         $pdf->SetXY(15, $startY + 65);
         $pdf->SetFillColor(230, 230, 230);
         $pdf->SetFont('DejaVu', 'BI', 13);
-        $pdf->Cell(55, 10, 'Rp1.177.200,00', 0, 0, 'C', true);
+        $pdf->Cell(55, 10, $total, 0, 0, 'C', true);
 
         // --- Bagian Tanda Tangan ---
         $startX = 145;
@@ -744,7 +800,7 @@ class JalintPdfController extends Controller
 
         $pdf->SetXY($startX, $currentY);
         $pdf->SetFont('DejaVu', '', 10);
-        $pdf->Cell(0, 5, 'Jambi, 20 Desember 2025.', 0, 1, 'L');
+        $pdf->Cell(0, 5, "Jambi, {$tanggalSurat}.", 0, 1, 'L');
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'Yang menerima :', 0, 1, 'L');
         $pdf->SetX($startX);
@@ -762,85 +818,103 @@ class JalintPdfController extends Controller
         $pdf->Cell(0, 5, 'Manajer Keuangan', 0, 1, 'L');
     }
 
-    private function buatHalamanInvoice($pdf)
+    private function buatHalamanInvoice($pdf, $invoices)
     {
+        // --- Data dasar ---
+        $customer = $invoices->customer;
+        $customerName = $customer->name;
+        $contactName = $customer->customerContact->name;
+        $alamat = "{$customer->city} - {$customer->province}";
+        $judul = $invoices->offer->title;
+
+        $tanggal = Carbon::parse($invoices->issued_at)
+            ->locale('id')
+            ->translatedFormat('d F Y');
+
+        // --- Angka ---
+        $subtotal = number_format($invoices->subtotal_amount, 0, ',', '.');
+
+        $vatPercent = (float) ($invoices->vat_percent ?? 0);   // contoh: 11
+        $pphPercent = (float) ($invoices->pph_percent ?? 0);   // contoh: 2.00
+
+        $ppnAmount = number_format($invoices->ppn_amount, 0, ',', '.');
+
+        $pphAmount = number_format($invoices->pph_amount, 0, ',', '.');
+
+        $total = number_format($invoices->total_amount, 0, ',', '.');
+
+        $fmt = fn ($n) => 'Rp '.number_format($n, 0, ',', '.');
+
+        // =====================================================
+        // HEADER
+        // =====================================================
         $pdf->SetFont('DejaVu', '', 10);
-        $pdf->Cell(25, 5, 'Invoice No.', 0, 0);
-        $pdf->Cell(5, 5, ':', 0, 0);
-        $pdf->Cell(0, 5, '1648/Inv/Jalint-Lab/XII/2025.', 0, 1);
-
-        $pdf->Cell(25, 5, 'Tanggal', 0, 0);
-        $pdf->Cell(5, 5, ':', 0, 0);
-        $pdf->Cell(0, 5, '20 Desember 2025.', 0, 1);
-
-        $pdf->Cell(25, 5, 'N.P.W.P', 0, 0);
-        $pdf->Cell(5, 5, ':', 0, 0);
-        $pdf->Cell(0, 5, '31.770.541.6-331.000', 0, 1);
+        $this->barisInfo($pdf, 'Invoice No.', $invoices->invoice_number);
+        $this->barisInfo($pdf, 'Tanggal', $tanggal);
+        $this->barisInfo($pdf, 'N.P.W.P', '31.770.541.6-331.000');
 
         $pdf->Ln(10);
 
-        // --- Alamat Tujuan ---
+        // --- Tujuan ---
         $pdf->SetFont('DejaVu', 'B', 10);
-        $pdf->Cell(25, 5, 'Kepada Yth', 0, 0);
-        $pdf->Cell(5, 5, ':', 0, 0);
-        $pdf->Cell(0, 5, 'PT. PERSADA ALAM JAYA', 0, 1);
+        $this->barisInfo($pdf, 'Kepada Yth', $customerName);
         $pdf->SetFont('DejaVu', '', 10);
-        $pdf->Cell(30, 5, '', 0, 0); // Offset
-        $pdf->Cell(0, 5, 'U.p Bapak M Nur Kholis', 0, 1);
+        $pdf->Cell(30, 5, '', 0, 0);
+        $pdf->Cell(0, 5, "U.p {$contactName}", 0, 1);
         $pdf->Cell(30, 5, '', 0, 0);
         $pdf->Cell(0, 5, 'di', 0, 1);
         $pdf->Cell(30, 5, '', 0, 0);
-        $pdf->Cell(0, 5, 'Suban - Batang Asam', 0, 1);
+        $pdf->Cell(0, 5, $alamat, 0, 1);
 
-        $pdf->Ln(15);
+        $pdf->Ln(10);
         $pdf->Cell(0, 5, 'Bersama ini kami mengajukan penagihan sebagai berikut:', 0, 1);
-        $pdf->Ln(2);
+        $pdf->Ln(3);
 
-        // --- Tabel Rincian Biaya ---
+        // =====================================================
+        // TABEL
+        // =====================================================
         $pdf->SetFont('DejaVu', 'B', 10);
-        // Header Tabel
         $pdf->Cell(10, 7, 'No', 1, 0, 'C');
         $pdf->Cell(130, 7, 'URAIAN', 1, 0, 'C');
         $pdf->Cell(50, 7, 'JUMLAH (Rp)', 1, 1, 'C');
 
         $pdf->SetFont('DejaVu', '', 9);
-        // Baris 1
-        $pdf->Cell(10, 14, '1.', 1, 0, 'C');
-        $x = $pdf->GetX();
-        $y = $pdf->GetY();
-        $pdf->MultiCell(130, 7, "Pengujian Sampel Kualitas Air Limbah Produksi Bulan\nDesember Tahun 2025 PT. Persada Alam Jaya.", 1, 'L');
-        $pdf->SetXY($x + 130, $y);
-        $pdf->Cell(50, 14, '580.000,00', 1, 1, 'R');
 
-        // Baris 2
-        $pdf->Cell(10, 14, '2.', 1, 0, 'C');
-        $x = $pdf->GetX();
-        $y = $pdf->GetY();
-        $pdf->MultiCell(130, 7, "Pengujian Sampel Kualitas Air Limbah Domestik Bulan\nDesember Tahun 2025 PT. Persada Alam Jaya.", 1, 'L');
-        $pdf->SetXY($x + 130, $y);
-        $pdf->Cell(50, 14, '500.000,00', 1, 1, 'R');
+        $no = 1;
 
-        // Baris 3 (PPN)
-        $pdf->Cell(10, 7, '3.', 1, 0, 'C');
-        $pdf->Cell(130, 7, 'PPN', 1, 0, 'L');
-        $pdf->Cell(50, 7, '118.800,00', 1, 1, 'R');
+        // --- Subtotal ---
+        $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        $pdf->Cell(130, 7, "{$judul} {$customerName}", 1, 0);
+        $pdf->Cell(50, 7, $subtotal, 1, 1, 'R');
 
-        // Baris 4 (PPh 23)
-        $pdf->Cell(10, 7, '4.', 1, 0, 'C');
-        $pdf->Cell(130, 7, 'PPh 23 (2%)', 1, 0, 'L');
-        $pdf->Cell(50, 7, '(21.600,00)', 1, 1, 'R');
+        // --- PPN ---
+        if ($vatPercent > 0) {
+            $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+            $pdf->Cell(130, 7, "PPN ({$vatPercent}%)", 1, 0);
+            $pdf->Cell(50, 7, $ppnAmount, 1, 1, 'R');
+        }
 
-        // Baris Terbilang & Total
+        // --- PPh 23 ---
+        if ($pphPercent > 0) {
+            $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+            $pdf->Cell(130, 7, "PPh 23 ({$pphPercent}%)", 1, 0);
+            $pdf->Cell(50, 7, $pphAmount, 1, 1, 'R');
+        }
+
+        // --- Total ---
         $pdf->SetFont('DejaVu', 'B', 10);
-        $pdf->Cell(140, 7, 'Terbilang :', 1, 0, 'L');
-        $pdf->Cell(50, 14, '1.177.200,00', 1, 0, 'R'); // Digabung dengan baris bawahnya
+        $pdf->Cell(140, 7, 'Terbilang :', 1, 0);
+        $pdf->Cell(50, 14, $fmt($total), 1, 0, 'R');
         $pdf->Ln(7);
-        $pdf->SetFont('DejaVu', 'BI', 10);
-        $pdf->Cell(140, 7, 'Satu juta seratus tujuh puluh tujuh ribu dua ratus rupiah', 1, 1, 'L');
 
+        $pdf->SetFont('DejaVu', 'BI', 10);
+        $pdf->Cell(140, 7, AmountToWordsUtil::toWords($total), 1, 1);
+
+        // =====================================================
+        // FOOTER INFO + TTD (tidak diubah logika)
+        // =====================================================
         $pdf->Ln(5);
 
-        // --- Informasi Transfer ---
         $pdf->SetFont('DejaVu', '', 10);
         $pdf->Cell(50, 5, 'Transfer Pembayaran Kepada', 0, 0);
         $pdf->Cell(5, 5, ':', 0, 1);
@@ -848,11 +922,9 @@ class JalintPdfController extends Controller
         $pdf->Cell(50, 5, 'Bank', 0, 0);
         $pdf->Cell(5, 5, ':', 0, 0);
         $pdf->Cell(0, 5, 'BNI Cabang Jambi ;', 0, 1);
-
         $pdf->Cell(50, 5, 'Rekening Giro Nomor', 0, 0);
         $pdf->Cell(5, 5, ':', 0, 0);
         $pdf->Cell(0, 5, '0298820772 ;', 0, 1);
-
         $pdf->Cell(50, 5, 'Atas Nama', 0, 0);
         $pdf->Cell(5, 5, ':', 0, 0);
         $pdf->Cell(0, 5, 'PT. JAMBI LESTARI INTERNASIONAL.', 0, 1);
@@ -868,9 +940,7 @@ class JalintPdfController extends Controller
         $pdf->Cell(0, 5, 'Jalint Lab', 0, 1, 'L');
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'a.n Direktur', 0, 1, 'L');
-
         $pdf->Ln(20);
-
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'Refni Azmalia, S.E', 0, 1, 'L');
         $pdf->SetX($startX);

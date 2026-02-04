@@ -8,6 +8,8 @@ class Fppcu extends Model
 {
     protected $table = 'fppcu';
 
+    protected $guarded = [];
+
     public function lhp()
     {
         return $this->belongsTo(LhpDocument::class, 'lhp_document_id');
