@@ -438,7 +438,7 @@ class TaskLetterController extends Controller
         */
         if ($role === 'manager_teknis') {
             return match ($taskLetter->status) {
-                'pending' => 'Menunggu Konfirmasi Surat Tugas',
+                'pending' => 'Konfirmasi Surat Tugas',
                 'approved',
                 'confirmed' => 'Surat Tugas Dikonfirmasi',
                 'revised' => 'Direvisi',

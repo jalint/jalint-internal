@@ -103,7 +103,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/provinces', [WilayahController::class, 'index']);
     Route::get('/cities/{id}', [WilayahController::class, 'getCity']);
 
-    Route::POST('lhp-documents/{lhp_document}/review', [LhpDocumentController::class, 'review']);
+    Route::post('lhp-documents/{lhp_document}/review', [LhpDocumentController::class, 'review']);
     Route::get('lhp-documents/eligible-offers', [OfferController::class, 'getEligibleOffersForLhp']);
     Route::get('lhp-documents/summary', [LhpDocumentController::class, 'summary']);
     Route::post('lhp-documents/analysis', [LhpDocumentController::class, 'fillAnalysis']);
@@ -120,4 +120,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugasTFPDF']);
 Route::get('invoices/{id}/print', [JalintPdfController::class, 'printInvoice']);
-Route::get('ppcu/print', [JalintPdfController::class, 'generateFPPCU']);
+Route::get('ppcu/{id}/print', [JalintPdfController::class, 'generateFPPCU']);

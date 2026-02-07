@@ -197,6 +197,9 @@ class InvoicePaymentController extends Controller
             'offer' => [
                 'id' => $offer->id,
                 'offer_number' => $offer->offer_number,
+                'offer_date' => $offer->offer_date,
+                'expired_date' => $offer->expired_date,
+                'location' => $offer->location,
                 'title' => $offer->title,
                 'status' => $offer->status,
                 'is_dp' => $offer->is_dp,
@@ -234,7 +237,7 @@ class InvoicePaymentController extends Controller
             // =========================
             // HAPUS FILE LAMA (jika ada)
             // =========================
-            if ($invoice->faktur_pajak_path && Storage::disk('local')->exists($invoice->faktur_pajak_path)) {
+            if ($invoice->faktur_pajak_path && Storage::disk('public')->exists($invoice->faktur_pajak_path)) {
                 Storage::disk('local')->delete($invoice->faktur_pajak_path);
             }
 
@@ -244,7 +247,7 @@ class InvoicePaymentController extends Controller
             $file = $validated['faktur_pajak'];
             $filename = Str::uuid().'.pdf';
 
-            $path = $file->storeAs('faktur-pajak', $filename, 'local');
+            $path = $file->storeAs('faktur-pajak', $filename, 'public');
 
             // =========================
             // UPDATE INVOICE

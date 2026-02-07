@@ -284,6 +284,7 @@ class OfferController extends Controller
             ->with([
                 'customer:id,name',
                 'currentReview.reviewStep',
+                'invoice:id,offer_id,invoice_number,faktur_pajak_path',
             ])
             ->orderByDesc('created_at');
 

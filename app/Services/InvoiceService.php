@@ -24,7 +24,7 @@ class InvoiceService
             'subtotal_amount' => $offer->subtotal_amount, // Sebelum Diskon
             'total_amount' => $offer->total_amount,
             'discount_amount' => $offer->discount_amount,
-            'vat_amount' => $offer->vat_amount,
+            'ppn_amount' => $offer->ppn_amount,
             'vat_percent' => $offer->vat_percent,
             'pph_amount' => $offer->pph_amount,
             'pph_percent' => $offer->pph_percent,
