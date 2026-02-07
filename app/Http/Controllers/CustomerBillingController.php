@@ -34,7 +34,7 @@ class CustomerBillingController extends Controller
             */
             'menunggu_pembayaran_akhir' => (clone $base)
                 ->whereHas('invoice', function ($q) {
-                    $q->where(function ($qq) {
+                    $q->whereNotNull('faktur_pajak_path')->where(function ($qq) {
                         // NON DP → belum ada payment
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 0))
                            ->whereDoesntHave('payments');
@@ -132,7 +132,7 @@ class CustomerBillingController extends Controller
         switch ($request->filter) {
             case 'menunggu_pembayaran_akhir':
                 $query->whereHas('invoice', function ($q) {
-                    $q->where(function ($qq) {
+                    $q->whereNotNull('faktur_pajak_path')->where(function ($qq) {
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 0))
                            ->whereDoesntHave('payments');
                     })->orWhere(function ($qq) {
@@ -211,7 +211,7 @@ class CustomerBillingController extends Controller
 
                 $hasRejected => 'Verifikasi Pembayaran Ditolak',
 
-                $approvedAmount >= $invoice->total_amount => 'Pembayaran Akhir Disetujui',
+                $approvedAmount == $invoice->total_amount => 'Pembayaran Akhir Disetujui',
 
                 default => 'Menunggu Pembayaran Akhir',
             };
