@@ -15,6 +15,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\JalintPdfController;
 use App\Http\Controllers\LhpDocumentController;
+use App\Http\Controllers\LhpFinalPdfController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\OfferDocumentController;
 use App\Http\Controllers\PositionController;
@@ -121,3 +122,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('task-letters/{id}/print', [JalintPdfController::class, 'suratTugasTFPDF']);
 Route::get('invoices/{id}/print', [JalintPdfController::class, 'printInvoice']);
 Route::get('ppcu/{id}/print', [JalintPdfController::class, 'generateFPPCU']);
+Route::get('lhp-final/{id}/print', [LhpFinalPdfController::class, 'printLhpFinal']);

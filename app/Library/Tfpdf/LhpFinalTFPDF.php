@@ -4,7 +4,7 @@ namespace App\Library\Tfpdf;
 
 require_once app_path('Library/Tfpdf/tfpdf.php');
 
-class JalintTFPDF extends \tFPDF
+class LhpFinalTFPDF extends \tFPDF
 {
     public $showHeader = true;
     public $showFooter = true;
@@ -34,7 +34,8 @@ class JalintTFPDF extends \tFPDF
         if ($this->showHeader) {
             // 1. GAMBAR BACKGROUND DULU (Agar menjadi layer paling bawah)
             // Set warna biru tipis
-            $this->SetFillColor(240, 252, 255);
+            $this->SetFillColor(228, 250, 255);
+            // $this->SetFillColor(203, 247, 255);
             // Gambar kotak penuh (F = Fill)
             $this->Rect(0, 0, 210, 297, 'F');
 

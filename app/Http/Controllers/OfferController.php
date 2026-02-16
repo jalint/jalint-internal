@@ -630,17 +630,6 @@ class OfferController extends Controller
                 if (!$user->hasRole('admin_penawaran')) {
                     abort(403, 'Hanya Admin Penawaran yang dapat merevisi penawaran');
                 }
-
-                /**
-                 * 4️⃣ Pastikan review terakhir = rejected.
-                 */
-                $lastReview = $offer->reviews()
-                    ->latest('created_at')
-                    ->first();
-
-                if (!$lastReview || $lastReview->decision !== 'rejected') {
-                    abort(400, 'Penawaran tidak berada pada kondisi revisi');
-                }
             }
 
             /*

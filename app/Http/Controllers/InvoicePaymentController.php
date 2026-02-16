@@ -29,13 +29,18 @@ class InvoicePaymentController extends Controller
         |--------------------------------------------------------------------------
         | BASE QUERY
         |--------------------------------------------------------------------------
-        | Tagihan = 1 payment
         */
         $query = InvoicePayment::query()
             ->with([
                 'invoice.offer:id,offer_number,title,offer_date,is_dp,total_amount',
             ])
-            ->orderByDesc('created_at');
+            ->select('invoice_payments.*')
+            ->selectSub(function ($q) {
+                $q->from('invoice_payments as ip2')
+                  ->selectRaw('MIN(ip2.created_at)')
+                  ->whereColumn('ip2.invoice_id', 'invoice_payments.invoice_id');
+            }, 'first_payment_at')
+            ->orderByDesc('invoice_payments.created_at');
 
         /*
         |--------------------------------------------------------------------------
@@ -44,20 +49,15 @@ class InvoicePaymentController extends Controller
         */
         switch ($request->filter) {
             case 'verifikasi_pembayaran':
-                $query->where('status', 'pending');
+                $query->where('invoice_payments.status', 'pending');
                 break;
 
             case 'pembayaran_disetujui':
-                $query->where('status', 'approved');
+                $query->where('invoice_payments.status', 'approved');
                 break;
 
             case 'pembayaran_ditolak':
-                $query->where('status', 'rejected');
-                break;
-
-            case 'all':
-            default:
-                // no filter
+                $query->where('invoice_payments.status', 'rejected');
                 break;
         }
 
@@ -90,22 +90,22 @@ class InvoicePaymentController extends Controller
 
             /*
             |-----------------------------------------
-            | TIPE PEMBAYARAN
+            | PAYMENT TYPE (DP / PELUNASAN)
             |-----------------------------------------
-            | DP atau Pelunasan
             */
-            if ($offer->is_dp) {
+            if (!$offer->is_dp) {
+                $payment->payment_type = 'Pelunasan';
+            } else {
+                // payment pertama = DP
                 $payment->payment_type =
-                    $payment->amount < $offer->total_amount
+                    $payment->created_at->equalTo($payment->first_payment_at)
                         ? 'DP'
                         : 'Pelunasan';
-            } else {
-                $payment->payment_type = 'Pelunasan';
             }
 
             /*
             |-----------------------------------------
-            | DATA DISPLAY
+            | OFFER DISPLAY
             |-----------------------------------------
             */
             $payment->offer_number = $offer->offer_number;

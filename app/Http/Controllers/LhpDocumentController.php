@@ -329,6 +329,8 @@ class LhpDocumentController extends Controller
                 'offer_id' => $request->offer_id,
                 'job_number' => $request->job_number,
                 'tanggal_dilaporkan' => $request->tanggal_dilaporkan,
+                'tanggal_terima' => $request->tanggal_terima,
+                'status_contoh_uji' => $request->status_contoh_uji,
                 'status' => 'draft',
             ]);
 

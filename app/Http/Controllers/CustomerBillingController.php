@@ -14,13 +14,14 @@ class CustomerBillingController extends Controller
 
         $base = Offer::query()
             ->where('customer_id', $customer->customer_id)
-            ->where('status', 'completed');
-        // ->whereHas('invoice', function ($q) {
-        //     $q->whereBetween('created_at', [
-        //         now()->startOfMonth(),
-        //         now()->endOfMonth(),
-        //     ]);
-        // });
+            ->where('status', 'completed')
+            ->whereHas('invoice', function ($q) {
+                $q->whereNotNull('faktur_pajak_path');
+                // $q->whereBetween('created_at', [
+                //     now()->startOfMonth(),
+                //     now()->endOfMonth(),
+                // ]);
+            });
 
         return response()->json([
             'all' => (clone $base)->count(),
@@ -34,21 +35,22 @@ class CustomerBillingController extends Controller
             */
             'menunggu_pembayaran_akhir' => (clone $base)
                 ->whereHas('invoice', function ($q) {
-                    $q->whereNotNull('faktur_pajak_path')->where(function ($qq) {
-                        // NON DP → belum ada payment
+                    $q->where(function ($qq) {
+                        // NON DP → belum ada payment approved DAN tidak ada payment pending
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 0))
-                           ->whereDoesntHave('payments');
+                        ->whereDoesntHave('payments', fn ($p) => $p->whereIn('status', ['approved', 'pending']));
                     })->orWhere(function ($qq) {
-                        // DP → sudah bayar DP tapi belum lunas
+                        // DP → sudah ada approved tapi totalnya belum lunas DAN tidak ada payment pending
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 1))
-                           ->whereHas('payments', fn ($p) => $p->where('status', 'approved'))
-                           ->whereRaw('
-                           (SELECT COALESCE(SUM(amount),0)
+                        ->whereDoesntHave('payments', fn ($p) => $p->where('status', 'pending')) // Tambahkan ini
+                        ->whereHas('payments', fn ($p) => $p->where('status', 'approved'))
+                        ->whereRaw('
+                        (SELECT COALESCE(SUM(amount),0)
                             FROM invoice_payments
                             WHERE invoice_payments.invoice_id = invoices.id
                             AND status = "approved"
-                           ) < invoices.total_amount
-                       ');
+                        ) < invoices.total_amount
+                    ');
                     });
                 })
                 ->count(),
@@ -112,7 +114,9 @@ class CustomerBillingController extends Controller
             ])
             ->where('customer_id', $customer->customer_id)
             ->where('status', 'completed')
-            ->whereHas('invoice')
+            ->whereHas('invoice', function ($q) {
+                $q->whereNotNull('faktur_pajak_path');
+            })
             // 2. SELECT PADA JOIN/RELASI (Eager Loading)
             ->with([
                 // Ambil field invoice seperlunya.
@@ -132,19 +136,28 @@ class CustomerBillingController extends Controller
         switch ($request->filter) {
             case 'menunggu_pembayaran_akhir':
                 $query->whereHas('invoice', function ($q) {
-                    $q->whereNotNull('faktur_pajak_path')->where(function ($qq) {
+                    $q->where(function ($qq) {
+                        // 1. KASUS NON-DP:
+                        // Belum ada payment APPROVED dan juga TIDAK ADA yang PENDING
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 0))
-                           ->whereDoesntHave('payments');
-                    })->orWhere(function ($qq) {
+                           ->whereDoesntHave('payments', function ($p) {
+                               $p->whereIn('status', ['approved', 'pending']);
+                           });
+                    })
+                    ->orWhere(function ($qq) {
+                        // 2. KASUS DP:
+                        // Sudah ada payment APPROVED tapi belum lunas,
+                        // DAN sedang tidak ada cicilan/pelunasan yang statusnya PENDING
                         $qq->whereHas('offer', fn ($o) => $o->where('is_dp', 1))
+                           ->whereDoesntHave('payments', fn ($p) => $p->where('status', 'pending'))
                            ->whereHas('payments', fn ($p) => $p->where('status', 'approved'))
                            ->whereRaw('
-                           (SELECT COALESCE(SUM(amount),0)
-                            FROM invoice_payments
-                            WHERE invoice_payments.invoice_id = invoices.id
-                            AND status = "approved"
-                           ) < invoices.total_amount
-                       ');
+               (SELECT COALESCE(SUM(amount),0) 
+                FROM invoice_payments 
+                WHERE invoice_payments.invoice_id = invoices.id 
+                AND status = "approved"
+               ) < invoices.total_amount
+           ');
                     });
                 });
                 break;

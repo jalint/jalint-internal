@@ -249,20 +249,18 @@ class JalintPdfController extends Controller
         $data = $this->getDataOffer($id);
         $parameters = $this->buildDataUjiForPdf($data);
 
-        // Pastikan instansiasi class yang benar
         $pdf = new JalintTFPDF();
         $pdf->SetAutoPageBreak(true, 20);
         $pdf->AliasNbPages();
         $pdf->AddPage();
-
-        // Set Font Default (Unicode)
         $pdf->SetFont('DejaVu', '', 10);
 
+        // Data Mapping
         $taskLetterNumber = $data->taskLetter->task_letter_number ?? '-';
-        $namaKegiatan = $data->title;
-        $customerName = $data->customer->name;
-        $location = $data->location;
-        $dataPersonel = $data->taskLetter->officers;
+        $namaKegiatan = $data->title ?? '-';
+        $customerName = $data->customer->name ?? '-';
+        $location = $data->location ?? '-';
+        $dataPersonel = $data->taskLetter->officers ?? [];
         $tanggalKegiatan = $this->formatTanggalRange($data->taskLetter->start_date, $data->taskLetter->end_date);
 
         // --- JUDUL ---
@@ -270,101 +268,87 @@ class JalintPdfController extends Controller
         $pdf->Cell(0, 8, 'SURAT TUGAS', 0, 1, 'C');
         $pdf->SetFont('DejaVu', '', 10);
         $pdf->Cell(0, 2, "No: $taskLetterNumber", 0, 1, 'C');
-        $pdf->Ln(5);
+        $pdf->Ln(8);
 
         // --- KALIMAT PEMBUKA ---
         $pdf->SetFont('DejaVu', '', 11);
-        $isiSurat = "Sehubungan dengan $namaKegiatan $customerName di $location, Maka dengan ini kami tugaskan:";
+        $isiSurat = "Sehubungan dengan $namaKegiatan $customerName di $location, maka dengan ini kami tugaskan:";
         $pdf->MultiCell(0, 6, $isiSurat, 0, 'J');
         $pdf->Ln(5);
 
-        // --- TABEL PERSONEL ---
-        $wNo = 10;
-        $wNama = 60;
-        $wJab = 55;
-        $wKet = 57;
-        $totalLebarTabel = $wNo + $wNama + $wJab + $wKet;
-        $marginTengah = (210 - $totalLebarTabel) / 2;
-
+        // --- TABEL PERSONEL (DINAMIS) ---
         $pdf->SetDrawColor(255, 128, 0);
-        $pdf->SetX($marginTengah);
+        $pdf->SetWidths([10, 60, 55, 65]);
+        $pdf->SetAligns(['C', 'L', 'L', 'L']);
         $pdf->SetFont('DejaVu', 'B', 10);
-        $pdf->Cell($wNo, 8, 'No', 1, 0, 'C');
-        $pdf->Cell($wNama, 8, 'Nama', 1, 0, 'L');
-        $pdf->Cell($wJab, 8, 'Jabatan', 1, 0, 'L');
-        $pdf->Cell($wKet, 8, 'Ket', 1, 1, 'L');
 
+        // Header Tabel
+        $pdf->Row(['No', 'Nama', 'Jabatan', 'Keterangan']);
+
+        $pdf->SetFont('DejaVu', '', 10);
         $no = 1;
         foreach ($dataPersonel as $row) {
-            $pdf->SetX($marginTengah);
-            $pdf->SetFont('DejaVu', 'B', 10);
-            $pdf->Cell($wNo, 8, $no++, 1, 0, 'C');
-            $pdf->SetFont('DejaVu', '', 10);
-            // tFPDF tidak butuh mb_convert_encoding, langsung cetak UTF-8
-            $pdf->Cell($wNama, 8, $row['employee']['name'], 1, 0, 'L');
-            $pdf->Cell($wJab, 8, $row['position'], 1, 0, 'L');
-            $pdf->Cell($wKet, 8, $row['description'], 1, 1, 'L');
+            $pdf->Row([
+                $no++,
+                $row['employee']['name'] ?? '-',
+                $row['position'] ?? '-',
+                $row['description'] ?? '-',
+            ]);
         }
-
         $pdf->SetDrawColor(0, 0, 0);
-        $pdf->Ln(5);
+        $pdf->Ln(8);
 
         // --- INFORMASI PARAMETER ---
         $pdf->SetFont('DejaVu', '', 11);
         $pdf->MultiCell(0, 6, "Untuk melakukan pekerjaan tersebut diatas pada hari $tanggalKegiatan dengan rincian sebagai berikut:", 0, 'J');
         $pdf->Ln(5);
 
-        // --- TABEL PARAMETER ---
-        $pdf->SetWidths([10, 30, 50, 60, 15, 15]);
-        $pdf->SetAligns(['C', 'C', 'L', 'L', 'C', 'C']);
-        $pdf->SetFont('DejaVu', 'B', 8);
-
+        // --- TABEL PARAMETER (DINAMIS) ---
+        $pdf->SetWidths([10, 40, 50, 55, 15, 20]);
+        $pdf->SetAligns(['C', 'L', 'L', 'L', 'C', 'C']);
+        $pdf->SetFont('DejaVu', 'B', 9);
         $pdf->Row(['No', 'Bahan/Produk', 'Regulasi', 'Jenis Parameter', 'Satuan', 'Jumlah']);
-        $pdf->SetFont('DejaVu', '', 8);
 
+        $pdf->SetFont('DejaVu', '', 8);
         $noPara = 1;
         $totalSample = 0;
         foreach ($parameters as $p) {
-            $totalSample += $p['jumlah_parameter'];
-
+            $totalSample += ($p['jumlah_parameter'] ?? 0);
             $pdf->Row([
                 $noPara++,
-                $p['produk_uji'],
-                $p['regulasi'], // Gunakan tag jika helper sudah siap, atau langsung 'SO₄²⁻'
-                $p['parameter'],
+                $p['produk_uji'] ?? '-',
+                $p['regulasi'] ?? '-',
+                $p['parameter'] ?? '-',
                 'Titik',
-                1,
+                $p['jumlah_parameter'] ?? 0,
             ]);
         }
-
-        // --- TABEL KOORDINAT ---
         $pdf->Ln(10);
+
+        // --- TABEL KOORDINAT (HEADER KHUSUS) ---
+        $pdf->SetFont('DejaVu', 'BI', 9);
         $xPos = $pdf->GetX();
-        $pdf->SetFont('DejaVu', 'BI', 8);
-        // Header koordinat
         $pdf->Cell(50, 14, 'Identifikasi Uji / Sample ID', 1, 0, 'C');
         $pdf->Cell(40, 14, 'Matriks / Matrix', 1, 0, 'C');
-        $pdf->Cell(90, 7, 'Koordinat / Coordinate', 1, 1, 'C');
+        $pdf->Cell(100, 7, 'Koordinat / Coordinate', 1, 1, 'C');
         $pdf->SetX($xPos + 90);
-        $pdf->Cell(45, 7, 'Lintang / Latitude', 1, 0, 'C');
-        $pdf->Cell(45, 7, 'Bujur / Longitude', 1, 1, 'C');
+        $pdf->Cell(50, 7, 'Lintang / Latitude', 1, 0, 'C');
+        $pdf->Cell(50, 7, 'Bujur / Longitude', 1, 1, 'C');
 
-        $pdf->SetFont('DejaVu', '', 8);
-        $pdf->SetWidths([50, 40, 45, 45]);
+        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->SetWidths([50, 40, 50, 50]);
         $pdf->SetAligns(['L', 'C', 'C', 'C']);
 
-        // Data sample dengan simbol derajat asli (Unicode)
-        // $dataSample = [
-        //     ['id' => 'UA-01', 'matrix' => 'Udara Ambien', 'lat' => "03°24'55.2\"", 'long' => "102°44'12.8\""],
-        // ];
-
-        // foreach ($dataSample as $row) {
-        //     // Langsung masukkan variabel, tFPDF akan merender ° dengan benar
-        //     $pdf->Row([$row['id'], $row['matrix'], $row['lat'], $row['long']]);
-        // }
-
-        for ($i = 0; $i < $totalSample; ++$i) {
-            $pdf->Row(['', '', '', '']); // Array kosong sejumlah kolom tabel (4 kolom)
+        // Contoh data koordinat dinamis
+        if (isset($data->samples) && count($data->samples) > 0) {
+            foreach ($data->samples as $sample) {
+                $pdf->Row([$sample->sample_id, $sample->matrix, $sample->lat, $sample->long]);
+            }
+        } else {
+            // Jika data kosong, buat baris kosong sesuai total sample
+            for ($i = 0; $i < $totalSample; ++$i) {
+                $pdf->Row(['', '', '', '']);
+            }
         }
 
         // --- PENUTUP ---
@@ -374,14 +358,13 @@ class JalintPdfController extends Controller
 
         // --- TANDA TANGAN ---
         $pdf->Ln(10);
-        $xTTD = 120;
-        $pdf->SetX($xTTD);
+        $pdf->SetX(130);
         $pdf->Cell(60, 6, 'Jambi, '.date('d F Y'), 0, 1, 'L');
-        $pdf->SetX($xTTD);
+        $pdf->SetX(130);
         $pdf->SetFont('DejaVu', 'B', 11);
         $pdf->Cell(60, 6, 'Jalint Lab', 0, 1, 'L');
         $pdf->Ln(20);
-        $pdf->SetX($xTTD);
+        $pdf->SetX(130);
         $pdf->SetFont('DejaVu', 'BU', 11);
         $pdf->Cell(60, 6, 'Nama Pejabat Terkait', 0, 1, 'L');
 
@@ -411,21 +394,19 @@ class JalintPdfController extends Controller
         $pdf->AddPage('P', 'A4');
 
         $lhpDocument = LhpDocument::query()->where('id', $id)
-         ->with(['offer.customer.customerContact', 'fppcu', 'fppcu.fppcuParameters'])
-         ->firstOrFail();
+            ->with(['offer.customer.customerContact', 'fppcu', 'fppcu.fppcuParameters'])
+            ->firstOrFail();
 
-        // dd($lhpDocument->offer->customer->name);
-
-        $customerName = $lhpDocument->offer->customer->name;
-        $alamat = $lhpDocument->offer->customer->address;
-        $judulKegiatan = $lhpDocument->offer->title;
-        $noTelp = $lhpDocument->offer->customer->customerContact->phone;
-        $pic = $lhpDocument->offer->customer->customerContact->name;
-        $picEmail = $lhpDocument->offer->customer->customerContact->email;
+        // Data Mapping
+        $customerName = $lhpDocument->offer->customer->name ?? '-';
+        $alamat = $lhpDocument->offer->customer->address ?? '-';
+        $judulKegiatan = $lhpDocument->offer->title ?? '-';
+        $noTelp = $lhpDocument->offer->customer->customerContact->phone ?? '-';
+        $pic = $lhpDocument->offer->customer->customerContact->name ?? '-';
+        $picEmail = $lhpDocument->offer->customer->customerContact->email ?? '-';
         $statusContohUji = $lhpDocument->status_contoh_uji;
         $tanggalDiterima = Carbon::parse($lhpDocument->tanggal_diterima)->format('d/m/Y');
 
-        $noPara = 1;
         // Margin atas
         $pdf->SetTopMargin(10);
 
@@ -434,33 +415,23 @@ class JalintPdfController extends Controller
         // ======================
         $pdf->SetFont('DejaVu', 'B', 11);
         $pdf->Cell(0, 5, 'FORMULIR PERMINTAAN PENGUJIAN CONTOH UJI', 0, 1, 'C');
-
         $pdf->SetFont('DejaVu', 'B', 9);
         $pdf->Cell(0, 5, 'JOB NUMBER: LAB-JLI-.......................', 0, 1, 'C');
         $pdf->Ln(3);
 
         // ======================
-        // INFORMASI PELANGGAN
+        // INFORMASI PELANGGAN (Dinamis dengan rowWithDots)
         // ======================
         $pdf->SetFont('DejaVu', '', 9);
         $lineHeight = 6;
 
+        // Gunakan MultiCell di dalam rowWithDots agar Alamat panjang tidak terpotong
         $this->rowWithDots($pdf, 'Nama Pelanggan', $customerName, $lineHeight);
-        $this->rowWithDots(
-            $pdf,
-            'Alamat',
-            $alamat,
-            $lineHeight
-        );
+        $this->rowWithDots($pdf, 'Alamat', $alamat, $lineHeight);
         $this->rowWithDots($pdf, 'Personil Penghubung', $pic, $lineHeight);
         $this->rowWithDots($pdf, 'No. Telp/HP', $noTelp, $lineHeight);
         $this->rowWithDots($pdf, 'Email Penerima Laporan', $picEmail, $lineHeight);
-        $this->rowWithDots(
-            $pdf,
-            'Nama Kegiatan',
-            $judulKegiatan,
-            $lineHeight
-        );
+        $this->rowWithDots($pdf, 'Nama Kegiatan', $judulKegiatan, $lineHeight);
         $this->rowWithDots($pdf, 'Tanggal Diterima', $tanggalDiterima, $lineHeight);
 
         $pdf->Ln(4);
@@ -469,76 +440,64 @@ class JalintPdfController extends Controller
         // HEADER TABEL
         // ======================
         $pdf->SetFont('DejaVu', 'B', 8);
-        $hHeader = 9;
+        // Atur Lebar Kolom (Total 185 untuk A4 dengan margin standar)
+        $w = [10, 30, 45, 35, 30, 35];
+        $pdf->SetWidths($w);
+        $pdf->SetAligns(['C', 'C', 'C', 'C', 'C', 'C']);
 
-        $pdf->Cell(10, $hHeader, 'No', 1, 0, 'C');
-        $pdf->Cell(30, $hHeader, 'Bahan Produk', 1, 0, 'C');
-        $pdf->Cell(45, $hHeader, 'Jenis Wadah Contoh Uji', 1, 0, 'C');
-        $pdf->Cell(35, $hHeader, 'Volume Contoh Uji', 1, 0, 'C');
-        $pdf->Cell(30, $hHeader, 'Pengawetan', 1, 0, 'C');
-        $pdf->Cell(35, $hHeader, 'Keterangan', 1, 1, 'C');
+        $pdf->Row(['No', 'Bahan Produk', 'Jenis Wadah Contoh Uji', 'Volume Contoh Uji', 'Pengawetan', 'Keterangan']);
 
         // ======================
-        // ISI TABEL
+        // ISI TABEL (DINAMIS)
         // ======================
         $pdf->SetFont('DejaVu', '', 8);
+        $pdf->SetAligns(['C', 'L', 'L', 'C', 'L', 'L']);
 
-        $data = $lhpDocument->fppcu->toArray();
-
-        $rowHeight = 6;
-        $totalRow = 21; // jumlah baris form (sisanya kosong)
         $rows = [];
         $noPara = 1;
+        $dataFppcu = $lhpDocument->fppcu;
 
-        foreach ($data as $row) {
-            $namaBahan = $row['nama_bahan_produk'] ?? '';
-            $params = $row['fppcu_parameters'] ?? [];
+        foreach ($dataFppcu as $row) {
+            $namaBahan = $row->nama_bahan_produk ?? '';
+            $params = $row->fppcuParameters ?? [];
 
             foreach ($params as $fp) {
                 $rows[] = [
-                    'no' => $noPara++,
-                    'nama_bahan' => $namaBahan,
-                    'jenis_wadah' => $fp['jenis_wadah'] ?? '',
-                    'volume' => $fp['volume_contoh_uji'] ?? '',
-                    'pengawetan' => $fp['pengawetan'] ?? '',
-                    'keterangan' => $fp['keterangan'] ?? '',
+                    $noPara++,
+                    $namaBahan,
+                    $fp->jenis_wadah ?? '',
+                    $fp->volume_contoh_uji ?? '',
+                    $fp->pengawetan ?? '',
+                    $fp->keterangan ?? '',
                 ];
             }
         }
 
-        $pdf->SetFont('DejaVu', '', 8);
-        $rowHeight = 6;
-        $totalRow = 21;
-
-        for ($i = 0; $i < $totalRow; ++$i) {
-            $row = $rows[$i] ?? [
-                'no' => '',
-                'nama_bahan' => '',
-                'jenis_wadah' => '',
-                'volume' => '',
-                'pengawetan' => '',
-                'keterangan' => '',
-            ];
-
-            $pdf->Cell(10, $rowHeight, $row['no'], 1, 0, 'C');
-            $pdf->Cell(30, $rowHeight, $row['nama_bahan'], 1, 0, 'L');
-            $pdf->Cell(45, $rowHeight, $row['jenis_wadah'], 1, 0, 'L');
-            $pdf->Cell(35, $rowHeight, $row['volume'], 1, 0, 'C');
-            $pdf->Cell(30, $rowHeight, $row['pengawetan'], 1, 0, 'L');
-            $pdf->Cell(35, $rowHeight, $row['keterangan'], 1, 1, 'L');
+        // Tampilkan data yang ada
+        foreach ($rows as $rowData) {
+            $pdf->Row($rowData);
         }
+
+        // Tambahkan baris kosong jika data kurang dari 15 agar formulir tidak terlihat buntung
+        // (Opsional, sesuaikan kebutuhan minimal baris)
+        $minRows = 15;
+        if (count($rows) < $minRows) {
+            for ($i = count($rows); $i < $minRows; ++$i) {
+                $pdf->Row(['', '', '', '', '', '']);
+            }
+        }
+
         $pdf->Ln(4);
+
         // ======================
         // STATUS CONTOH UJI
         // ======================
         $pdf->SetFont('DejaVu', '', 9);
         $pdf->Cell(35, 5, 'Status Contoh Uji :', 0, 0);
 
-        // Checkbox 1
+        // Checkbox Dinamis
         $pdf->Cell(5, 5, $statusContohUji == 'diantar_pelanggan' ? 'V' : '', 1, 0, 'C');
         $pdf->Cell(50, 5, ' Diantar Pelanggan', 0, 1);
-
-        // Checkbox 2
         $pdf->Cell(35, 5, '', 0, 0);
         $pdf->Cell(5, 5, $statusContohUji == 'diambil_oleh_laboratorium' ? 'V' : '', 1, 0, 'C');
         $pdf->Cell(50, 5, ' Diambil Oleh Laboratorium', 0, 1);
@@ -549,18 +508,17 @@ class JalintPdfController extends Controller
         // TANDA TANGAN
         // ======================
         $pdf->SetFont('DejaVu', '', 9);
-
         $pdf->Cell(70, 5, 'PPCU / Perwakilan Pelanggan,', 0, 0, 'C');
         $pdf->Cell(0, 5, 'Jambi, '.$tanggalDiterima, 0, 1, 'R');
 
-        $pdf->Ln(15);
+        $pdf->Ln(20);
 
-        $pdf->Cell(68, 5, '( Ulfi Atha Tifalni )', 0, 0, 'C');
-        $pdf->Cell(0, 5, "( {$pic} )", 0, 1, 'R');
+        $pdf->SetFont('DejaVu', 'U', 9);
+        $pdf->Cell(70, 5, '( Ulfi Atha Tifalni )', 0, 0, 'C');
+        $pdf->Cell(0, 5, "( $pic )", 0, 1, 'R');
 
-        return response(
-            $pdf->Output('S', 'Formulir_Permintaan.pdf')
-        )->header('Content-Type', 'application/pdf');
+        return response($pdf->Output('S', 'Formulir_Permintaan.pdf'))
+            ->header('Content-Type', 'application/pdf');
     }
 
     // Fungsi Pembantu untuk baris dengan titik-titik
@@ -834,7 +792,7 @@ class JalintPdfController extends Controller
         $pdf->Cell(40, 10, 'Uang sejumlah', 0, 0);
         $pdf->Cell(5, 10, ':', 0, 0);
         $pdf->SetFont('DejaVu', 'BI', 11); // Ukuran font diperkecil sedikit
-        $pdf->Cell(0, 10, AmountToWordsUtil::toWords($invoices->total_amount), 0, 1);
+        $pdf->MultiCell(0, 10, AmountToWordsUtil::toWords($invoices->total_amount), 0, 1);
 
         // --- Baris: Untuk Pembayaran ---
         $pdf->SetX(15);
@@ -895,12 +853,10 @@ class JalintPdfController extends Controller
         $pphPercent = (float) ($invoices->pph_percent ?? 0);   // contoh: 2.00
 
         $ppnAmount = number_format($invoices->ppn_amount, 0, ',', '.');
-
         $pphAmount = number_format($invoices->pph_amount, 0, ',', '.');
+        $discountAmount = number_format($invoices->discount_amount, 0, ',', '.');
 
         $total = number_format($invoices->total_amount, 0, ',', '.');
-
-        $fmt = fn ($n) => 'Rp '.number_format($n, 0, ',', '.');
 
         // =====================================================
         // HEADER
@@ -930,6 +886,51 @@ class JalintPdfController extends Controller
         // =====================================================
         // TABEL
         // =====================================================
+        // $pdf->SetFont('DejaVu', 'B', 10);
+        // $pdf->Cell(10, 7, 'No', 1, 0, 'C');
+        // $pdf->Cell(130, 7, 'URAIAN', 1, 0, 'C');
+        // $pdf->Cell(50, 7, 'JUMLAH (Rp)', 1, 1, 'C');
+
+        // $pdf->SetFont('DejaVu', '', 9);
+
+        // $no = 1;
+
+        // // --- Subtotal ---
+        // $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        // $pdf->Cell(130, 7, "{$judul} {$customerName}", 1, 0);
+        // $pdf->Cell(50, 7, $subtotal, 1, 1, 'R');
+
+        // // --- PPN ---
+        // if ($vatPercent > 0) {
+        //     $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        //     $pdf->Cell(130, 7, "PPN ({$vatPercent}%)", 1, 0);
+        //     $pdf->Cell(50, 7, $ppnAmount, 1, 1, 'R');
+        // }
+
+        // // --- PPh 23 ---
+        // if ($pphPercent > 0) {
+        //     $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        //     $pdf->Cell(130, 7, "PPh 23 ({$pphPercent}%)", 1, 0);
+        //     $pdf->Cell(50, 7, $pphAmount, 1, 1, 'R');
+        // }
+
+        // if ($discountAmount > 0) {
+        //     $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        //     $pdf->Cell(130, 7, 'Potongan', 1, 0);
+        //     $pdf->Cell(50, 7, $discountAmount, 1, 1, 'R');
+        // }
+
+        // // --- Total ---
+        // $pdf->SetFont('DejaVu', 'B', 10);
+        // $pdf->Cell(140, 7, 'Terbilang :', 1, 0);
+        // $pdf->Cell(50, 14, $total, 1, 0, 'R');
+        // $pdf->Ln(7);
+
+        // $pdf->SetFont('DejaVu', 'BI', 10);
+        // $pdf->MultiCell(140, 7, AmountToWordsUtil::toWords($invoices->total_amount), 1, 1);
+        // =====================================================
+        // TABEL
+        // =====================================================
         $pdf->SetFont('DejaVu', 'B', 10);
         $pdf->Cell(10, 7, 'No', 1, 0, 'C');
         $pdf->Cell(130, 7, 'URAIAN', 1, 0, 'C');
@@ -937,13 +938,17 @@ class JalintPdfController extends Controller
 
         $pdf->SetFont('DejaVu', '', 9);
 
-        $no = 1;
-
         // --- Subtotal ---
-        $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+        // Gunakan MultiCell untuk uraian agar jika judul sangat panjang, tabel tidak hancur
+        $x = $pdf->GetX();
+        $y = $pdf->GetY();
+
+        // Simpan posisi awal untuk baris isi
+        $pdf->Cell(10, 7, '1', 1, 0, 'C');
         $pdf->Cell(130, 7, "{$judul} {$customerName}", 1, 0);
         $pdf->Cell(50, 7, $subtotal, 1, 1, 'R');
 
+        $no = 2;
         // --- PPN ---
         if ($vatPercent > 0) {
             $pdf->Cell(10, 7, $no++, 1, 0, 'C');
@@ -958,14 +963,45 @@ class JalintPdfController extends Controller
             $pdf->Cell(50, 7, $pphAmount, 1, 1, 'R');
         }
 
-        // --- Total ---
-        $pdf->SetFont('DejaVu', 'B', 10);
-        $pdf->Cell(140, 7, 'Terbilang :', 1, 0);
-        $pdf->Cell(50, 14, $total, 1, 0, 'R');
-        $pdf->Ln(7);
+        if ($discountAmount > 0) {
+            $pdf->Cell(10, 7, $no++, 1, 0, 'C');
+            $pdf->Cell(130, 7, 'Potongan', 1, 0);
+            $pdf->Cell(50, 7, $discountAmount, 1, 1, 'R');
+        }
 
-        $pdf->SetFont('DejaVu', 'BI', 10);
-        $pdf->Cell(140, 7, AmountToWordsUtil::toWords($total), 1, 1);
+        // =====================================================
+        // BAGIAN TOTAL & TERBILANG (DINAMIS)
+        // =====================================================
+        $pdf->SetFont('DejaVu', 'B', 10);
+
+        $currentX = $pdf->GetX();
+        $currentY = $pdf->GetY();
+        $lebarTerbilang = 140;
+        $lebarTotal = 50;
+
+        // 1. Gambar Label "Terbilang :"
+        $pdf->Cell($lebarTerbilang, 7, 'Terbilang :', 'LTR', 1, 'L');
+
+        // 2. Gambar Isi Terbilang (MultiCell)
+        $pdf->SetFont('DejaVu', 'BI', 9);
+        $terbilangTeks = AmountToWordsUtil::toWords($invoices->total_amount).' Rupiah';
+
+        // Hitung tinggi terbilang untuk menyamakan kotak sebelah kanan
+        $ySebelumMulti = $pdf->GetY();
+        $pdf->MultiCell($lebarTerbilang, 7, $terbilangTeks, 'LBR', 'L');
+        $ySesudahMulti = $pdf->GetY();
+
+        $tinggiTotalBaris = $ySesudahMulti - $currentY;
+
+        // 3. Pindah kembali ke posisi Y awal untuk menggambar sel TOTAL di kanan
+        $pdf->SetXY($currentX + $lebarTerbilang, $currentY);
+        $pdf->SetFont('DejaVu', 'B', 11);
+
+        // Gambar sel Total dengan tinggi yang sudah dihitung (tinggi label + tinggi multicell)
+        $pdf->Cell($lebarTotal, $tinggiTotalBaris, "Rp $total", 1, 1, 'R');
+
+        // Kembalikan posisi Y ke bawah setelah tabel selesai
+        $pdf->SetY($ySesudahMulti);
 
         // =====================================================
         // FOOTER INFO + TTD (tidak diubah logika)
