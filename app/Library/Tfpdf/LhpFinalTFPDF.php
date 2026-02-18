@@ -27,6 +27,11 @@ class LhpFinalTFPDF extends \tFPDF
         $this->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.ttf', true);
         $this->AddFont('DejaVu', 'I', 'DejaVuSerif-Italic.ttf', true);
         $this->AddFont('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf', true);
+
+        $this->AddFont('PlusJakartaSans', '', 'PlusJakartaSans-Regular.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'I', 'PlusJakartaSans-Italic.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'B', 'PlusJakartaSans-Bold.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'BI', 'PlusJakartaSans-BoldItalic.ttf', true);
     }
 
     public function Header()
@@ -34,10 +39,10 @@ class LhpFinalTFPDF extends \tFPDF
         if ($this->showHeader) {
             // 1. GAMBAR BACKGROUND DULU (Agar menjadi layer paling bawah)
             // Set warna biru tipis
-            $this->SetFillColor(228, 250, 255);
-            // $this->SetFillColor(203, 247, 255);
+            // $this->SetFillColor(228, 250, 255);
+            $this->SetFillColor(203, 247, 255);
             // Gambar kotak penuh (F = Fill)
-            $this->Rect(0, 0, 210, 297, 'F');
+            // $this->Rect(0, 0, 210, 297, 'F');
 
             $baseline = 25;
 
@@ -100,7 +105,7 @@ class LhpFinalTFPDF extends \tFPDF
 
             $this->SetFillColor(0, 150, 75);
             $this->SetTextColor(255, 255, 255);
-            $this->SetFont('DejaVu', '', 8);
+            $this->SetFont('PlusJakartaSans', '', 8);
 
             $alamat = 'Jl. Nusa Indah I No. 59 E-F Kelurahan Rawasari Kecamatan Alam Barajo Kota Jambi, Kode Pos 36125 | +6282-3123-4995';
             $hal = ' | Halaman '.$this->PageNo().' dari {nb}';
@@ -121,7 +126,7 @@ class LhpFinalTFPDF extends \tFPDF
 
         if ($this->lhpFinalFooter) {
             $this->SetY(-15);
-            $this->SetFont('DejaVu', '', 8);
+            $this->SetFont('PlusJakartaSans', '', 8);
             $this->Cell(100, 5, 'No. Dok.: FSOP.JLI-11.1', 0, 0, 'L');
             $this->Cell(0, 5, 'No. Revisi/Terbit: 5/2', 0, 1, 'R');
         }

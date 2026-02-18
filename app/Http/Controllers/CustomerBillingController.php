@@ -285,11 +285,11 @@ class CustomerBillingController extends Controller
                ->with([
                    'details',
                    'details.sampleMatrix',
-                   'details.lhpDocumentParamters',
-                   'details.lhpDocumentParamters.offerSampleParameter',
-                   'details.lhpDocumentParamters.offerSampleParameter.testParameter:id,test_method_id,name',
-                   'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
-                   'details.lhpDocumentParamters.offerSampleParameter.testParameter.testMethod:id,name',
+                   'details.lhpDocumentParameters',
+                   'details.lhpDocumentParameters.offerSampleParameter',
+                   'details.lhpDocumentParameters.offerSampleParameter.testParameter:id,test_method_id,name',
+                   'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
+                   'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
                ])
             ->where('offer_id', $offer->id)->get();
         }

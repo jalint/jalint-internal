@@ -6,6 +6,7 @@ use App\Library\Tfpdf\LhpFinalTFPDF;
 use App\Models\LhpDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LhpFinalPdfController extends Controller
 {
@@ -17,17 +18,21 @@ class LhpFinalPdfController extends Controller
         $pdf->AddPage('P');
         $pdf->SetMargins(20, 20, 20);
 
-        $lhp = LhpDocument::with(['offer.customer.customerContact'])->findOrFail($request->id);
+        $lhp = LhpDocument::with(['offer.customer.customerContact', 'details.sampleMatrix', 'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod'])->findOrFail($request->id);
         $this->generateLHPClean($pdf, $lhp);
 
         $pdf->AddPage('P');
         $pdf->SetMargins(10, 10, 10);
-        $this->testLhp($pdf);
+        $this->testLhp($pdf, $lhp);
 
-        $pdf->AddPage('P');
-        $pdf->SetMargins(10, 10, 10);
-        $pdf->SetAutoPageBreak(false);
-        $this->generateCertificate($pdf);
+        $dataHeaders = $this->getDataHeaderLHP($lhp);
+        // dd($dataHeaders);
+        foreach ($dataHeaders as $header) {
+            $pdf->AddPage('P');
+            $pdf->SetMargins(10, 10, 10);
+            $pdf->SetAutoPageBreak(false);
+            $this->generateCertificate($pdf, $lhp, $header);
+        }
 
         return response($pdf->Output('S', 'lhp_final.pdf'))
                 ->header('Content-Type', 'application/pdf');
@@ -42,14 +47,14 @@ class LhpFinalPdfController extends Controller
         $pdf->SetFont('DejaVu', 'BI', 11);
         $pdf->Cell(0, 6, 'CERTIFICATE OF ANALYSIS', 0, 1, 'C');
 
-        $pdf->SetFont('DejaVu', 'B', 12);
+        $pdf->SetFont('PlusJakartaSans', 'B', 12);
         $pdf->SetTextColor(0, 102, 204);
-        $nomorLhp = $lhp->nomor_lhp ?? 'LAB-JLI-2503309A';
+        $nomorLhp = $lhp->job_number;
         $pdf->Cell(0, 7, $nomorLhp, 0, 1, 'C');
 
         $pdf->SetTextColor(0, 0, 0);
         $pdf->Ln(10);
-
+        $totalSample = $lhp->offer->samples()->count();
         // --- INFORMASI PELANGGAN (DINAMIS & ANTI-OVER) ---
         $wLabel = 60;
         $wDot = 5;
@@ -61,18 +66,18 @@ class LhpFinalPdfController extends Controller
         $this->renderInfoRow($pdf, "Personil Penghubung/\nContact Person", $lhp->offer->customer->customerContact->name ?? '-', $wLabel, $wDot, 10);
         $this->renderInfoRow($pdf, "Alamat Lengkap/\nAddress", $lhp->offer->customer->address, $wLabel, $wDot, 10);
         $this->renderInfoRow($pdf, "Nama Kegiatan/\nProject Name", $lhp->offer->title, $wLabel, $wDot, 10, true);
-        $this->renderInfoRow($pdf, "Jumlah Contoh Uji/\nSamples", $lhp->total_samples ?? 0, $wLabel, $wDot, 10);
+        $this->renderInfoRow($pdf, "Jumlah Contoh Uji/\nSamples", $totalSample, $wLabel, $wDot, 10);
 
         // --- TANDA TANGAN ---
         $pdf->Ln(12);
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $tanggal = Carbon::parse($lhp->tanggal_diterima)->translatedFormat('d F Y');
         $pdf->Cell(60, 5, 'Jambi, '.$tanggal, 0, 1, 'L');
 
         $pdf->Ln(25);
-        $pdf->SetFont('DejaVu', 'BU', 10);
+        $pdf->SetFont('PlusJakartaSans', 'BU', 10);
         $pdf->Cell(60, 5, 'Jumaida Panggabean, S.Si', 0, 1, 'L');
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(60, 5, 'Kepala Laboratorium', 0, 1, 'L');
 
         // --- FOOTER SECTION ---
@@ -81,18 +86,18 @@ class LhpFinalPdfController extends Controller
             $pdf->Image(public_path('assets/images/qr.png'), 20, $pdf->GetY() - 6, 22, 20);
         }
 
-        $pdf->SetFont('DejaVu', 'B', 12);
+        $pdf->SetFont('PlusJakartaSans', 'B', 12);
         $pdf->SetTextColor(0, 102, 204);
         $pdf->Cell(0, 6, 'JALINT LAB', 0, 1, 'C');
 
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('DejaVu', '', 8);
+        $pdf->SetFont('PlusJakartaSans', '', 8);
         $pdf->Cell(0, 4, 'Jl. Nusa Indah I, No. 59E-F, Kel. Rawasari, Kec. Alam Barajo, Kota Jambi, Provinsi Jambi', 0, 1, 'C');
         $pdf->Cell(0, 4, 'Telepon : 0741-3071716 - WA : 08117447787 - Website : www.jambilestari.co.id', 0, 1, 'C');
 
         // --- KOTAK DISCLAIMER ---
         $pdf->Ln(8);
-        $pdf->SetFont('DejaVu', '', 8);
+        $pdf->SetFont('PlusJakartaSans', '', 8);
         $disclaimer = 'Laporan ini dibuat berdasarkan hasil observasi yang objektif dan independen terhadap sampel pelanggan yang bersifat khusus dan rahasia. Data hasil pengujian, interpretasi, dan pendapat-pendapat yang ada di dalamnya mewakili penilaian terbaik dari PT. Jambi Lestari Internasional. Dalam hal penggunaan laporan ini, PT. Jambi Lestari Internasional tidak membuat jaminan secara tersirat maupun tersurat dan tidak bertanggung jawab terhadap produktivitas, kegiatan operasional, ataupun kerugian lainnya yang bersifat materil maupun imaterial. Laporan ini tidak diperbolehkan untuk digandakan, kecuali secara utuh keseluruhannya dan atas persetujuan tertulis dari PT. Jambi Lestari Internasional.';
 
         // --- KONFIGURASI PADDING ---
@@ -121,283 +126,22 @@ class LhpFinalPdfController extends Controller
         $pdf->SetY($currY + $tinggiKotak + 5);
     }
 
-    // public function generateCertificate($pdf)
-    // {
-    //     $pdf->SetFont('DejaVu', '', 8);
-
-    //     // --- BAGIAN HEADER ---
-
-    //     // LAPORAN HASIL PENGUJIAN (Bold, Underline, Ukuran Besar)
-    //     $pdf->SetFont('DejaVu', 'BU', 12);
-    //     $pdf->Cell(0, 6, 'LAPORAN HASIL PENGUJIAN', 0, 1, 'C');
-
-    //     // CERTIFICATE OF ANALYSIS (Italic, Underline)
-    //     $pdf->SetFont('DejaVu', 'BI', 11);
-    //     $pdf->Cell(0, 6, 'CERTIFICATE OF ANALYSIS', 0, 1, 'C');
-
-    //     // Nomor LAB (Regular)
-    //     $pdf->SetFont('DejaVu', 'B', 11);
-    //     $pdf->Cell(0, 6, 'LAB-JLI-2503309A', 0, 1, 'C');
-
-    //     // Nama PT (Bold)
-    //     $pdf->SetFont('DejaVu', 'B', 11);
-    //     $pdf->Cell(0, 6, 'PT. MEGASAWINDO PERKASA PALM OIL MILL', 0, 1, 'C');
-
-    //     $pdf->Ln(5); // Spasi sebelum tabel
-
-    //     // --- DEFINISI KOLOM ---
-    //     // Lebar total A4 portrait margin standar = ~190mm
-    //     // Kita bagi lebar kolom sesuai proporsi gambar
-    //     $w = [
-    //         45, // Identifikasi Lab
-    //         75, // Identifikasi Contoh Uji
-    //         35, // Matriks
-    //         35,  // Tanggal
-    //     ];
-
-    //     // Simpan posisi Y awal tabel untuk menggambar kotak border nanti
-    //     $tableStartY = $pdf->GetY();
-
-    //     // --- HEADER TABEL (Bilingual) ---
-
-    //     // Baris 1: Bahasa Indonesia (Tebal)
-    //     $pdf->SetFont('DejaVu', '', 8);
-    //     $headerIndo = ['Identifikasi Laboratorium/', 'Identifikasi Contoh Uji/', 'Matriks/', 'Tanggal Pengambilan/'];
-    //     $headerEng = ['Laboratory Identification', 'Sampel Identification', 'Matrix', 'Date of Sampling'];
-
-    //     // Kita render Header secara manual agar rapi (2 baris dalam 1 cell header)
-    //     $xStart = $pdf->GetX();
-    //     $yStart = $pdf->GetY();
-
-    //     for ($i = 0; $i < count($w); ++$i) {
-    //         $pdf->SetXY($xStart, $yStart);
-
-    //         // Kotak Header Transparan (hanya untuk spacing, border digambar manual nanti jika perlu)
-    //         // Gambar garis atas dan bawah header
-    //         $pdf->Line($xStart, $yStart, $xStart + $w[$i], $yStart); // Garis atas
-    //         $pdf->Line($xStart, $yStart + 12, $xStart + $w[$i], $yStart + 12); // Garis bawah header
-
-    //         // Teks Indo (Atas)
-    //         $pdf->SetFont('DejaVu', '', 8);
-    //         $pdf->SetXY($xStart, $yStart + 2);
-    //         $pdf->Cell($w[$i], 4, $headerIndo[$i], 0, 0, 'C');
-
-    //         // Teks Inggris (Bawah, Italic)
-    //         $pdf->SetFont('DejaVu', 'I', 9);
-    //         $pdf->SetXY($xStart, $yStart + 6);
-    //         $pdf->Cell($w[$i], 4, $headerEng[$i], 0, 0, 'C');
-
-    //         $xStart += $w[$i];
-    //     }
-
-    //     // Pindah baris setelah header
-    //     $pdf->SetXY($pdf->GetX() - array_sum($w), $yStart + 13); // +13 agar ada sedikit jarak dari garis header
-
-    //     // --- DATA DUMMY (Sesuai Gambar) ---
-    //     $data = [
-    //         ['LAB-JLI-2503309A -1/9', 'ATsp-2 (Sumur Pantau Blok B) Maju Terus', 'Air Sumur Pantau Indonesia', '04/03/2025'],
-    //         ['LAB-JLI-2503309A -2/9', 'ATsp-2 (Sumur Pantau Blok B)', 'Air Sumur Pantau', '04/03/2025'],
-    //         ['LAB-JLI-2503309A -3/9', 'ATsp-3 (Sumur Pantau Blok C)', 'Air Sumur Pantau', '04/03/2025'],
-    //         ['LAB-JLI-2503309A -4/9', 'ATsp-4 (Sumur Pantau Blok E)', 'Air Sumur Pantau', '04/03/2025'],
-    //         ['LAB-JLI-2503309A -5/9', 'ATsp-5 (Sumur Pantau Blok G)', 'Air Sumur Pantau', '04/03/2025'],
-    //     ];
-
-    //     // --- RENDER ISI TABEL ---
-    //     $pdf->SetFont('DejaVu', '', 8);
-
-    //     foreach ($data as $row) {
-    //         // Kolom 1: Lab ID (Center/Left)
-    //         $pdf->Cell($w[0], 6, $row[0], 0, 0, 'C'); // Align Left agar rapi sesuai gambar
-
-    //         // Kolom 2: Sample ID (Left)
-    //         $pdf->Cell($w[1], 6, $row[1], 0, 0, 'C');
-
-    //         // Kolom 3: Matriks (Center/Left)
-    //         $pdf->Cell($w[2], 6, $row[2], 0, 0, 'C');
-
-    //         // Kolom 4: Tanggal (Center)
-    //         $pdf->Cell($w[3], 6, $row[3], 0, 0, 'C');
-
-    //         $pdf->Ln();
-    //     }
-
-    //     // --- GAMBAR BORDER KOTAK UTAMA ---
-    //     // Gambar kotak mengelilingi seluruh tabel (Header + Data)
-    //     // X awal = margin kiri (biasanya 10mm), Y awal = $tableStartY
-    //     // Lebar = sum($w), Tinggi = Y sekarang - Y awal
-
-    //     $tableHeight = $pdf->GetY() - $tableStartY;
-    //     $pdf->Rect(10, $tableStartY, array_sum($w), $tableHeight);
-
-    //     // DATA ==============
-    //     $pdf->Ln(5);
-
-    //     $pdf->SetFont('DejaVu', '', 8);
-    //     $startX = 10;
-
-    //     // --- INPUT DINAMIS (Contoh: Ada 4 Sample) ---
-    //     // Ubah array ini, dan tabel akan otomatis menyesuaikan
-    //     $dynamicSubHeaders = ['ATsp-1', 'ATsp-2', 'ATsp-3', 'ATsp-4', 'ATsp-5'];
-    //     $countResults = count($dynamicSubHeaders);
-
-    //     // --- 2. HITUNG LEBAR KOLOM OTOMATIS ---
-    //     // Total Lebar area kerja = 277mm (A4 Landscape minus margin)
-
-    //     // Lebar kolom FIX
-    //     $w_no = 10;
-    //     $w_param = 70; // Parameter agak lebar
-    //     $w_bml = 20;
-    //     $w_unit = 20;
-    //     $w_method = 40;
-
-    //     $totalFixedW = $w_no + $w_param + $w_bml + $w_unit + $w_method;
-
-    //     // Sisa lebar dibagi jumlah kolom hasil
-    //     $availableForResults = 277 - $totalFixedW;
-    //     $w_res_item = $availableForResults / $countResults;
-
-    //     // Build Array Lebar ($w)
-    //     $w = [];
-    //     $w[] = $w_no;      // 0
-    //     $w[] = $w_param;   // 1
-    //     for ($i = 0; $i < $countResults; ++$i) {
-    //         $w[] = $w_res_item;
-    //     } // 2...
-    //     $w[] = $w_bml;
-    //     $w[] = $w_unit;
-    //     $w[] = $w_method;
-
-    //     // --- 3. GAMBAR HEADER DINAMIS (Sama seperti sebelumnya) ---
-    //     $h_total = 12;
-    //     $h_half = 6;
-    //     $currX = $startX;
-    //     $currY = $pdf->GetY();
-
-    //     $pdf->SetFont('DejaVu', 'B', 8);
-    //     $pdf->SetFillColor(220, 240, 255); // Background Header Biru
-
-    //     // A. Header Kiri
-    //     $leftHeaders = ['NO', 'PARAMETER'];
-    //     $leftW = [$w_no, $w_param];
-    //     for ($i = 0; $i < 2; ++$i) {
-    //         $pdf->SetXY($currX, $currY);
-    //         $pdf->Rect($currX, $currY, $leftW[$i], $h_total, 'DF'); // Border + Fill
-    //         $pdf->SetXY($currX, $currY + 4);
-    //         $pdf->Cell($leftW[$i], 4, $leftHeaders[$i], 0, 0, 'C');
-    //         $currX += $leftW[$i];
-    //     }
-
-    //     // B. Header Tengah (Hasil)
-    //     $totalWResult = $w_res_item * $countResults;
-    //     $pdf->SetXY($currX, $currY);
-    //     $pdf->Cell($totalWResult, $h_half, 'HASIL / RESULT', 1, 0, 'C', true);
-
-    //     $pdf->SetXY($currX, $currY + $h_half);
-    //     foreach ($dynamicSubHeaders as $sub) {
-    //         $pdf->Cell($w_res_item, $h_half, $sub, 1, 0, 'C', true);
-    //     }
-    //     $currX += $totalWResult;
-
-    //     // C. Header Kanan
-    //     $rightHeaders = ['BML / EQS*', "SATUAN /\nUNIT", "METODE /\nMETHOD"];
-    //     $rightW = [$w_bml, $w_unit, $w_method];
-    //     for ($i = 0; $i < 3; ++$i) {
-    //         $pdf->SetXY($currX, $currY);
-    //         $pdf->Rect($currX, $currY, $rightW[$i], $h_total, 'DF');
-    //         $pdf->SetXY($currX, $currY + 2);
-    //         $pdf->MultiCell($rightW[$i], 3, $rightHeaders[$i], 0, 'C');
-    //         $currX += $rightW[$i];
-    //     }
-
-    //     // --- 4. DATA DUMMY (GENERATOR) ---
-    //     $dataRows = [];
-    //     // Row 1 (Pendek)
-    //     $row1 = ['1', 'Suhu (Temperature)'];
-    //     for ($k = 0; $k < $countResults; ++$k) {
-    //         $row1[] = '26.5';
-    //     }
-    //     array_push($row1, '-', '°C', 'SNI 06-6989.23-2005');
-    //     $dataRows[] = $row1;
-
-    //     // Row 2 (Panjang - Wrapping Test)
-    //     $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-    //     for ($k = 0; $k < $countResults; ++$k) {
-    //         $row2[] = '2.31';
-    //     }
-    //     array_push($row2, '20', 'mg/L', 'SNI 6989.72:2009');
-    //     $dataRows[] = $row2;
-
-    //     // --- 5. RENDER DATA (DENGAN BORDER KOTAK PENUH) ---
-    //     $pdf->SetFont('DejaVu', '', 8);
-    //     $yCurrent = $currY + $h_total; // Mulai di bawah header
-
-    //     foreach ($dataRows as $row) {
-    //         $xCurrent = $startX;
-
-    //         // A. HITUNG TINGGI BARIS (Wajib dilakukan agar kotak sejajar)
-    //         $maxH = 5;
-    //         for ($i = 0; $i < count($w); ++$i) {
-    //             $pdf->SetXY(300, 0); // Ukur di luar layar
-    //             $pdf->MultiCell($w[$i], 4, $row[$i], 0, 'L');
-    //             if ($pdf->GetY() > $maxH) {
-    //                 $maxH = $pdf->GetY();
-    //             }
-    //         }
-    //         // Tambah padding sedikit biar tidak sesak
-    //         if ($maxH > 5) {
-    //             $maxH += 2;
-    //         }
-
-    //         // Cek Page Break
-    //         if ($yCurrent + $maxH > $pdf->GetPageHeight() - 20) {
-    //             $pdf->AddPage('L');
-    //             $yCurrent = 10;
-    //             // (Opsional: Gambar Header lagi disini)
-    //         }
-
-    //         // B. GAMBAR KOTAK & TEKS
-    //         for ($i = 0; $i < count($w); ++$i) {
-    //             $pdf->SetXY($xCurrent, $yCurrent);
-
-    //             // 1. GAMBAR KOTAK (BORDER) DULUAN
-    //             // Ini yang membuat efek "Grid" (kotak penuh tiap baris)
-    //             // Parameter 'D' = Draw Border Only (tanpa fill)
-    //             $pdf->Rect($xCurrent, $yCurrent, $w[$i], $maxH, 'D');
-
-    //             // 2. TULIS TEKS DI DALAM KOTAK
-    //             // Alignment logic: Param & Method Left, sisa Center
-    //             $align = 'C';
-    //             if ($i == 1 || $i == count($w) - 1) {
-    //                 $align = 'L';
-    //             }
-
-    //             // Gunakan MultiCell agar teks turun baris (jika panjang)
-    //             $pdf->MultiCell($w[$i], 4, $row[$i], 0, $align);
-
-    //             $xCurrent += $w[$i];
-    //         }
-
-    //         // Pindah posisi Y ke baris berikutnya
-    //         $yCurrent += $maxH;
-    //     }
-    // }
-
-    public function generateCertificate($pdf)
+    public function generateCertificate($pdf, $lhp, $headers)
     {
-        $pdf->SetFont('DejaVu', '', 8);
+        $pdf->SetFont('PlusJakartaSans', '', 8);
 
         // --- BAGIAN HEADER ---
-        $pdf->SetFont('DejaVu', 'BU', 12);
+        $pdf->SetFont('PlusJakartaSans', 'BU', 12);
         $pdf->Cell(0, 6, 'LAPORAN HASIL PENGUJIAN', 0, 1, 'C');
 
-        $pdf->SetFont('DejaVu', 'BI', 11);
+        $pdf->SetFont('PlusJakartaSans', 'BI', 11);
         $pdf->Cell(0, 6, 'CERTIFICATE OF ANALYSIS', 0, 1, 'C');
 
-        $pdf->SetFont('DejaVu', 'B', 11);
-        $pdf->Cell(0, 6, 'LAB-JLI-2503309A', 0, 1, 'C');
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
+        $pdf->Cell(0, 6, $lhp->job_number, 0, 1, 'C');
 
-        $pdf->SetFont('DejaVu', 'B', 11);
-        $pdf->Cell(0, 6, 'PT. MEGASAWINDO PERKASA PALM OIL MILL', 0, 1, 'C');
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
+        $pdf->Cell(0, 6, Str::upper($lhp->offer->customer->name), 0, 1, 'C');
 
         $pdf->Ln(5);
 
@@ -413,7 +157,7 @@ class LhpFinalPdfController extends Controller
         $tableStartY = $pdf->GetY();
 
         // --- HEADER TABEL ATAS ---
-        $pdf->SetFont('DejaVu', '', 8);
+        $pdf->SetFont('PlusJakartaSans', '', 8);
         $headerIndo = ['Identifikasi Laboratorium/', 'Identifikasi Contoh Uji/', 'Matriks/', 'Tanggal Pengambilan/'];
         $headerEng = ['Laboratory Identification', 'Sampel Identification', 'Matrix', 'Date of Sampling'];
 
@@ -439,16 +183,16 @@ class LhpFinalPdfController extends Controller
         $pdf->SetXY($pdf->GetX() - array_sum($w), $yStart + 13);
 
         // --- DATA TABEL ATAS ---
-        $data = [
-            ['LAB-JLI-2503309A -1/9', 'ATsp-2 (Sumur Pantau Blok B) Maju Terus', 'Air Sumur Pantau Indonesia', '04/03/2025'],
-            ['LAB-JLI-2503309A -2/9', 'ATsp-2 (Sumur Pantau Blok B)', 'Air Sumur Pantau', '04/03/2025'],
-            ['LAB-JLI-2503309A -3/9', 'ATsp-3 (Sumur Pantau Blok C)', 'Air Sumur Pantau', '04/03/2025'],
-            ['LAB-JLI-2503309A -4/9', 'ATsp-4 (Sumur Pantau Blok E)', 'Air Sumur Pantau', '04/03/2025'],
-            ['LAB-JLI-2503309A -5/9', 'ATsp-5 (Sumur Pantau Blok G)', 'Air Sumur Pantau', '04/03/2025'],
-        ];
+        // $headers = [
+        //     ['LAB-JLI-2503309A -1/9', 'ATsp-2 (Sumur Pantau Blok B) Maju Terus', 'Air Sumur Pantau Indonesia', '04/03/2025'],
+        //     ['LAB-JLI-2503309A -2/9', 'ATsp-2 (Sumur Pantau Blok B)', 'Air Sumur Pantau', '04/03/2025'],
+        //     ['LAB-JLI-2503309A -3/9', 'ATsp-3 (Sumur Pantau Blok C)', 'Air Sumur Pantau', '04/03/2025'],
+        //     ['LAB-JLI-2503309A -4/9', 'ATsp-4 (Sumur Pantau Blok E)', 'Air Sumur Pantau', '04/03/2025'],
+        //     ['LAB-JLI-2503309A -5/9', 'ATsp-5 (Sumur Pantau Blok G)', 'Air Sumur Pantau', '04/03/2025'],
+        // ];
 
         $pdf->SetFont('DejaVu', '', 8);
-        foreach ($data as $row) {
+        foreach ($headers['data'] as $row) {
             $pdf->Cell($w[0], 6, $row[0], 0, 0, 'C');
             $pdf->Cell($w[1], 6, $row[1], 0, 0, 'C');
             $pdf->Cell($w[2], 6, $row[2], 0, 0, 'C');
@@ -470,7 +214,7 @@ class LhpFinalPdfController extends Controller
         $startX = 10;
 
         // --- INPUT DINAMIS ---
-        $dynamicSubHeaders = ['ATsp-1', 'ATsp-2', 'ATsp-3', 'ATsp-4', 'ATsp-5', 'ATsp-6'];
+        $dynamicSubHeaders = $headers['headers'];
         $countResults = count($dynamicSubHeaders);
 
         // --- 2. HITUNG LEBAR KOLOM (DISESUAIKAN KE 190mm) ---
@@ -526,7 +270,7 @@ class LhpFinalPdfController extends Controller
         // B. Header Tengah (HASIL / RESULT)
         $totalWResult = $w_res_item * $countResults;
         $pdf->SetXY($currX, $currY);
-        $pdf->Cell($totalWResult, $h_half, 'HASIL / RESULT', 1, 0, 'C', true);
+        $pdf->Cell($totalWResult, $h_half, 'HASIL/RESULT', 1, 0, 'C', true);
 
         $pdf->SetXY($currX, $currY + $h_half);
         foreach ($dynamicSubHeaders as $sub) {
@@ -535,7 +279,7 @@ class LhpFinalPdfController extends Controller
         $currX += $totalWResult;
 
         // C. Header Kanan (BML, SATUAN, METODE)
-        $rightHeaders = ['BML / EQS*', "SATUAN /\nUNIT", "METODE /\nMETHOD"];
+        $rightHeaders = ["BML/\nEQS*", "SATUAN/\nUNIT", "METODE/\nMETHOD"];
         $rightW = [$w_bml, $w_unit, $w_method];
         for ($i = 0; $i < 3; ++$i) {
             $pdf->SetXY($currX, $currY);
@@ -791,165 +535,7 @@ class LhpFinalPdfController extends Controller
         $pdf->Cell(0, 4, 'The result relate only to the samples tested and this report shall not be reproduced except in full.', 0, 1, 'C');
     }
 
-    public function generateInformasiContohUjiDummy($pdf)
-    {
-        // =========================
-        // 1. JUDUL
-        // =========================
-        $pdf->SetFont('DejaVu', 'B', 12);
-        $pdf->Cell(0, 6, 'INFORMASI CONTOH UJI', 0, 1, 'C');
-
-        $pdf->SetFont('DejaVu', 'I', 10);
-        $pdf->Cell(0, 5, 'SAMPLE INFORMATION', 0, 1, 'C');
-        $pdf->Ln(4);
-
-        // =========================
-        // 2. INFORMASI ATAS
-        // =========================
-        $pdf->SetFont('DejaVu', '', 9);
-
-        $labelWidth = 45;
-        $colonWidth = 5;
-        $valueWidth = 130;
-
-        $info = [
-            'Nomor Pekerjaan/Job Number' => 'LAB-JLI-2503309A',
-            'Nama Pelanggan/Customer' => 'PT. MEGASAWINDO PERKASA PALM OIL MILL',
-            'Personil Penghubung/Contact Person' => 'Abdul Rauf',
-            'Tanggal Dilaporkan/Reported Date' => '21 Maret 2025',
-        ];
-
-        foreach ($info as $label => $value) {
-            $yStart = $pdf->GetY();
-
-            $pdf->MultiCell($labelWidth, 5, $label, 0, 'L');
-            $yAfterLabel = $pdf->GetY();
-
-            $pdf->SetXY($labelWidth, $yStart);
-            $pdf->Cell($colonWidth, 5, ':', 0, 0);
-
-            $pdf->MultiCell($valueWidth, 5, $value, 0, 'L');
-
-            $maxY = max($yAfterLabel, $pdf->GetY());
-            $pdf->SetY($maxY);
-        }
-
-        $pdf->Ln(5);
-
-        // =========================
-        // 3. SETUP KOLOM
-        // =========================
-        // Total = 180mm
-        $widths = [20, 40, 15, 15, 10, 15, 10, 18, 18, 19];
-
-        $pdf->SetWidths($widths);
-        $pdf->SetAligns(['L', 'L', 'C', 'C', 'C', 'C', 'C', 'C', 'L', 'L']);
-
-        // =========================
-        // 4. HEADER TABEL
-        // =========================
-        $pdf->SetFont('DejaVu', 'B', 7);
-
-        $hFull = 14;
-        $hHalf = 7;
-
-        $startX = $pdf->GetX();
-        $startY = $pdf->GetY();
-        $x = $startX;
-
-        $headers = [
-            "Identifikasi Laboratorium\nLaboratory Identification",
-            "Identifikasi Contoh Uji\nSample Identification",
-            "Matriks\nMatrix",
-            "Tanggal Pengambilan\nDate of Sampling",
-            "Waktu Pengambilan\nTime of Sampling",
-            "Tanggal Penerimaan\nDate of Received",
-            "Waktu Penerimaan\nTime of Received",
-            "Waktu Analisis\nTime of Analysis",
-        ];
-
-        // Kolom 0–7 (full height)
-        for ($i = 0; $i < 8; ++$i) {
-            $pdf->Rect($x, $startY, $widths[$i], $hFull);
-            $pdf->SetXY($x, $startY + 2);
-            $pdf->MultiCell($widths[$i], 3.5, $headers[$i], 0, 'C');
-            $x += $widths[$i];
-        }
-
-        // Group Koordinat
-        $groupWidth = $widths[8] + $widths[9];
-
-        // Parent
-        $pdf->Rect($x, $startY, $groupWidth, $hHalf);
-        $pdf->SetXY($x, $startY + 2);
-        $pdf->Cell($groupWidth, 3, 'Koordinat/Coordinate', 0, 0, 'C');
-
-        // Sub Lintang
-        $pdf->Rect($x, $startY + $hHalf, $widths[8], $hHalf);
-        $pdf->SetXY($x, $startY + $hHalf + 2);
-        $pdf->Cell($widths[8], 3, 'Lintang/Latitude', 0, 0, 'C');
-
-        // Sub Bujur
-        $pdf->Rect($x + $widths[8], $startY + $hHalf, $widths[9], $hHalf);
-        $pdf->SetXY($x + $widths[8], $startY + $hHalf + 2);
-        $pdf->Cell($widths[9], 3, 'Bujur/Longitude', 0, 0, 'C');
-
-        $pdf->SetY($startY + $hFull);
-
-        // =========================
-        // 5. DATA DUMMY
-        // =========================
-        $pdf->SetFont('DejaVu', '', 6.5);
-
-        $data = [
-            [
-                "LAB-JLI-2503309A\n-1/9",
-                'ATsp-1 (Sumur Pantau Penduduk)',
-                "Air Sumur\nPantau",
-                '04/03/2025', '10:02',
-                '06/03/2025', '08:00',
-                '06/03 - 08/03',
-                "LS: 01° 41' 06.6\"",
-                "BT: 102° 14' 28.6\"",
-            ],
-            [
-                "LAB-JLI-2503309A\n-2/9",
-                'ATsp-2 (Sumur Pantau Blok B)',
-                "Air Sumur\nPantau",
-                '04/03/2025', '10:25',
-                '06/03/2025', '08:00',
-                '06/03 - 08/03',
-                "LS: 01° 41' 29.9\"",
-                "BT: 102° 14' 20.3\"",
-            ],
-            [
-                "LAB-JLI-2503309A\n-3/9",
-                'ATsp-3 (Sumur Pantau Blok C)',
-                "Air Sumur\nPantau",
-                '04/03/2025', '09:47',
-                '06/03/2025', '08:00',
-                '06/03 - 08/03',
-                "LS: 01° 40' 56.4\"",
-                "BT: 102° 15' 01.2\"",
-            ],
-            [
-                "LAB-JLI-2503309A\n-4/9",
-                'ATsp-4 (Sumur Pantau Blok E) - Lokasi pengambilan sampel dilakukan di titik terjauh.',
-                "Air Sumur\nPantau",
-                '04/03/2025', '10:17',
-                '06/03/2025', '08:00',
-                '06/03 - 08/03',
-                "LS: 01° 37' 55.5\"",
-                "BT: 102° 14' 44.2\"",
-            ],
-        ];
-
-        foreach ($data as $row) {
-            $pdf->Row($row);
-        }
-    }
-
-    public function testLhp($pdf)
+    public function testLhp($pdf, $lhp)
     {
         // --- SETUP AWAL ---
         $startX = $pdf->GetX() - 10; // Ambil posisi margin kiri saat ini (misal 10mm)
@@ -975,14 +561,14 @@ class LhpFinalPdfController extends Controller
         // --- BAGIAN ISI (LOOPING) ---
         $pdf->SetFont('DejaVu', '', 10);
 
-        $data = [
-            ['Nomor Pekerjaan/Job Number', 'LAB-JLI-2503309A'],
-            ['Nama Pelanggan/Customer', 'PT. MEGASAWINDO PERKASA PALM OIL MILL'],
-            ['Personil Penghubung/Contact Person', 'Abdul Rauf'],
-            ['Tanggal Dilaporkan/Reported Date', '21 Maret 2025'],
+        $info = [
+            ['Nomor Pekerjaan/Job Number', $lhp->job_number],
+            ['Nama Pelanggan/Customer', $lhp->offer->customer->name],
+            ['Personil Penghubung/Contact Person', $lhp->offer->customer->customerContact->name],
+            ['Tanggal Dilaporkan/Reported Date', $lhp->tanggal_diterima],
         ];
 
-        foreach ($data as $row) {
+        foreach ($info as $row) {
             // KUNCI UTAMA ADA DI SINI:
             // Sebelum menggambar kolom pertama, RESET posisi X ke $startX
             $pdf->SetX($startX);
@@ -1003,142 +589,6 @@ class LhpFinalPdfController extends Controller
 
         // Bawah Nya
         $pdf->ln(3);
-
-        // // --- 1. SETUP UKURAN & FONT ---
-        // $pdf->SetFont('DejaVu', '', 6);
-        // $startX = $pdf->GetX();
-        // if ($startX < 5) {
-        //     $startX = 10;
-        // }
-
-        // // Definisi Lebar (Total 190mm)
-        // $w = [
-        //     30, // 0: ID Lab
-        //     35, // 1: ID Contoh
-        //     12, // 2: Matriks
-        //     15, // 3: Tgl Ambil
-        //     15, // 4: Waktu Ambil
-        //     15, // 5: Tgl Terima
-        //     15, // 6: Waktu Terima
-        //     15, // 7: Waktu Analisis
-        //     19, // 8: Lintang
-        //     19, // 9: Bujur
-        // ];
-
-        // // --- 2. HEADER TABEL ---
-        // $pdf->SetFont('DejaVu', '', 5.5);
-        // $h_header = 18;
-        // $yHeader = $pdf->GetY();
-        // $currentX = $startX;
-
-        // $headers = [
-        //     "Identifikasi Laboratorium\nLaboratory Identification",
-        //     "Identifikasi Contoh Uji\nSample Identification",
-        //     "Matriks\nMatrix",
-        //     "Tanggal\nPengambilan\nDate of\nSampling",
-        //     "Waktu\nPengambilan\nTime of\nSampling",
-        //     "Tanggal\nPenerimaan\nDate of\nReceived",
-        //     "Waktu\nPenerimaan\nTime of\nReceived",
-        //     "Waktu\nAnalisis\nTime of\nAnalysis",
-        // ];
-
-        // // Loop Header Biasa (Kolom 0-7)
-        // for ($i = 0; $i < 8; ++$i) {
-        //     $pdf->SetXY($currentX, $yHeader);
-        //     $pdf->Rect($currentX, $yHeader, $w[$i], $h_header);
-
-        //     // LOGIKA ALIGNMENT HEADER:
-        //     // Jika Kolom 0 (ID Lab) -> Left ('L')
-        //     // Sisanya (ID Contoh, dll) -> Center ('C')
-        //     $alignHeader = ($i == 0) ? 'L' : 'C';
-
-        //     // Geser sedikit ke bawah (+2) agar vertikal rapi
-        //     $pdf->SetXY($currentX, $yHeader + 2);
-        //     $pdf->MultiCell($w[$i], 2.5, $headers[$i], 0, $alignHeader);
-
-        //     $currentX += $w[$i];
-        // }
-
-        // // Header Koordinat (Kolom 8 & 9) - Tetap Center Sesuai Default
-        // $pdf->SetXY($currentX, $yHeader);
-        // $wCoord = $w[8] + $w[9];
-        // $pdf->Cell($wCoord, 8, 'Koordinat / Coordinate', 1, 2, 'C');
-
-        // $xSub = $currentX;
-        // $ySub = $pdf->GetY();
-        // $pdf->SetXY($xSub, $ySub);
-        // $pdf->Cell($w[8], 10, 'Lintang/Latitude', 1, 0, 'C');
-        // $pdf->Cell($w[9], 10, 'Bujur/Longitude', 1, 0, 'C');
-
-        // // --- 3. ISI DATA ---
-        // $pdf->SetFont('DejaVu', '', 6);
-        // $pdf->SetXY($startX, $yHeader + $h_header);
-
-        // // Data Dummy
-        // $bottomData = [
-        //     [
-        //         'LAB-JLI-2503309A-1/9',
-        //         'ATsp-1 (Sumur Pantau Penduduk)',
-        //         'Air Sumur', '04/03/2025', '10:02', '06/03/2025', '08:00', '06-08/03',
-        //         'LS: 01 41 06.6', 'BT: 102 14 28.6',
-        //     ],
-        //     [
-        //         'LAB-JLI-2503309A-2/9',
-        //         'ATsp-2 (Sumur Pantau Blok B)',
-        //         'Air Sumur', '04/03/2025', '10:02', '06/03/2025', '08:00', '06-08/03',
-        //         'LS: 01 41 06.6', 'BT: 102 14 28.6',
-        //     ],
-        // ];
-
-        // foreach ($bottomData as $row) {
-        //     $yStartRow = $pdf->GetY();
-        //     $xStartRow = $startX;
-
-        //     // A. HITUNG TINGGI BARIS (Off-Screen Measure)
-        //     $maxH = 5;
-        //     for ($i = 0; $i < count($w); ++$i) {
-        //         $pdf->SetXY(300, 0);
-        //         $pdf->MultiCell($w[$i], 3, $row[$i], 0, 'L');
-        //         if ($pdf->GetY() > $maxH) {
-        //             $maxH = $pdf->GetY();
-        //         }
-        //     }
-
-        //     // Cek Page Break
-        //     if ($yStartRow + $maxH > $pdf->GetPageHeight() - 15) {
-        //         $pdf->AddPage();
-        //         $yStartRow = $pdf->GetY();
-        //     }
-
-        //     // B. GAMBAR REAL
-        //     $currentX = $xStartRow;
-        //     for ($i = 0; $i < count($w); ++$i) {
-        //         $pdf->SetXY($currentX, $yStartRow);
-        //         $pdf->Rect($currentX, $yStartRow, $w[$i], $maxH); // Gambar Kotak
-
-        //         // --- LOGIKA ALIGNMENT DATA ---
-        //         // Default: Center ('C')
-        //         $alignData = 'C';
-
-        //         // Pengecualian:
-        //         // Kolom 0 (ID Lab) -> Left
-        //         // Kolom 1 (ID Contoh) -> Left
-        //         if ($i == 0 || $i == 1) {
-        //             $alignData = 'L';
-        //         }
-
-        //         // Tulis Teks
-        //         $pdf->SetXY($currentX, $yStartRow);
-
-        //         // Opsional: Jika ingin data 'Center' berada tepat di tengah secara vertikal (bukan di atas kotak)
-        //         // gunakan logika offset sederhana ini (hanya bekerja baik untuk single line):
-        //         // if ($alignData == 'C' && $maxH > 6) { $pdf->SetY($yStartRow + ($maxH/2) - 1.5); }
-
-        //         $pdf->MultiCell($w[$i], 3, $row[$i], 0, $alignData);
-
-        //         $currentX += $w[$i];
-        //     }
-        //     $pdf->SetY($yStartRow + $maxH);
 
         // --- 1. SETUP UKURAN & FONT ---
         $pdf->SetFont('DejaVu', 'B', 10);
@@ -1208,130 +658,60 @@ class LhpFinalPdfController extends Controller
         $pdf->SetXY($startX, $yStartData);
 
         // Data Dummy
-        $bottomData = [
-            [
-                'LAB-JLI-2503309A-1/9',
-                'ATsp-1 (Sumur Pantau Penduduk)',
-                'Air Sumur', '04/03/2025', '10:02', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 06.6', 'BT: 102 14 28.6',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-            [
-                'LAB-JLI-2503309A-2/9',
-                'ATsp-2 (Sumur Pantau Blok B)',
-                'Air Sumur', '04/03/2025', '10:25', '06/03/2025', '08:00', '06-08/03',
-                'LS: 01 41 29.9', 'BT: 102 14 20.3',
-            ],
-        ];
+        // 1. Ambil Nomor Job
+        $lhpNomor = $lhp->job_number;
 
-        foreach ($bottomData as $row) {
+        // 2. Hitung total detail untuk penyebut (contoh: per /9)
+        $totalDetails = $lhp->details->count();
+
+        $data = [];
+
+        // 3. Loop data details dengan $index untuk penomoran
+        foreach ($lhp->details as $index => $detail) {
+            // Helper: Format tanggal analisis (misal: 06/03 - 08/03)
+            // Asumsi field di DB adalah format date/datetime standar
+            $startAnalisis = $detail->waktu_analisis_start ? Carbon::parse($detail->waktu_analisis_start)->format('d/m') : '-';
+            $endAnalisis = $detail->waktu_analisis_end ? Carbon::parse($detail->waktu_analisis_end)->format('d/m') : '-';
+            $rangeAnalisis = "{$startAnalisis} - {$endAnalisis}";
+
+            // Helper: Format Tanggal Pengambilan & Penerimaan (dd/mm/yyyy)
+            $tglPengambilan = $detail->tanggal_pengambilan ? Carbon::parse($detail->tanggal_pengambilan)->format('d/m/Y') : '-';
+            $tglPenerimaan = $detail->tanggal_penerimaan ? Carbon::parse($detail->tanggal_penerimaan)->format('d/m/Y') : '-';
+
+            // Helper: Format Waktu (H:i) -> Ambil jam:menit saja
+            $waktuPengambilan = $detail->waktu_pengambilan ? Carbon::parse($detail->waktu_pengambilan)->format('H:i') : '-';
+            $waktuPenerimaan = $detail->waktu_penerimaan ? Carbon::parse($detail->waktu_penerimaan)->format('H:i') : '-';
+
+            // Susun Array
+            $data[] = [
+                // Kolom 1: Job Number + Index/Total (cth: LAB-JLI-2503309A\n-1/9)
+                "{$lhpNomor}-".($index + 1)."/{$totalDetails}",
+
+                // Kolom 2: Identifikasi Contoh Uji
+                $detail->identifikasi_contoh_uji,
+
+                // Kolom 3: Matriks Sample
+                $detail->sampleMatrix->name ?? '-',
+
+                // Kolom 4 & 5: Tgl & Waktu Pengambilan
+                $tglPengambilan,
+                $waktuPengambilan,
+
+                // Kolom 6 & 7: Tgl & Waktu Penerimaan
+                $tglPenerimaan,
+                $waktuPenerimaan,
+
+                // Kolom 8: Range Analisis
+                $rangeAnalisis,
+
+                // Kolom 9: Koordinat Lintang (Tambah prefix LS jika belum ada)
+                'LS: '.$detail->koordinat_lintang,
+
+                // Kolom 10: Koordinat Bujur (Tambah prefix BT jika belum ada)
+                'BT: '.$detail->koordinat_bujur,
+            ];
+        }
+        foreach ($data as $row) {
             $yStartRow = $pdf->GetY();
             $xStartRow = $startX;
 
@@ -1420,5 +800,118 @@ class LhpFinalPdfController extends Controller
 
         // Set posisi Y untuk baris berikutnya (ambil posisi paling bawah antara label atau value)
         $pdf->SetY(max($endYLabel, $endYValue) + 2);
+    }
+
+    private function getDataHeaderLHPDebug($lhp)
+    {
+        $allDetails = $lhp->details->sortBy('id')->values();
+        $totalGlobal = $allDetails->count();
+        $jobNumber = $lhp->job_number;
+
+        // 2. Mapping Nomor Global (1/10, 2/10, dst)
+        $mappedDetails = $allDetails->map(function ($detail, $index) use ($totalGlobal, $jobNumber) {
+            $nomorUrut = $index + 1;
+            $detail->nomor_lengkap = "{$jobNumber}-{$nomorUrut}/{$totalGlobal}";
+
+            $detail->tgl_sampling = $detail->tanggal_pengambilan
+                ? Carbon::parse($detail->tanggal_pengambilan)->format('d/m/Y')
+                : '-';
+
+            return $detail;
+        });
+
+        // 3. Grouping berdasarkan Matrix ID
+        $groupedDetails = $mappedDetails->groupBy('sample_matrix_id');
+
+        $finalOutput = [];
+
+        foreach ($groupedDetails as $matrixId => $items) {
+            // --- INI YANG ANDA MINTA ---
+            // Mengambil semua 'identifikasi_contoh_uji' dalam grup ini menjadi array simple
+            $dynamicSubHeaders = $items->pluck('identifikasi_contoh_uji')->toArray();
+
+            // Susun data baris (Rows) untuk tabel
+            $rows = $items->map(function ($item) {
+                return [
+                    $item->nomor_lengkap,
+                    $item->identifikasi_contoh_uji,
+                    $item->sampleMatrix->name ?? '-',
+                    $item->tgl_sampling,
+                ];
+            })->values()->toArray(); // values() untuk reset key array, toArray() ubah collection jadi array
+
+            // Masukkan ke array utama per Halaman/Kelompok
+            $finalOutput[] = [
+                'headers' => $dynamicSubHeaders, // Array ['ATsp-1', 'ATsp-2', ...]
+                'data' => $rows,               // Array data tabel
+            ];
+        }
+
+        return $finalOutput;
+    }
+
+    private function getDataHeaderLHP($lhp)
+    {
+        $allDetails = $lhp->details->sortBy('id')->values();
+        $totalGlobal = $allDetails->count();
+        $jobNumber = $lhp->job_number;
+
+        // Mapping Data Global
+        $mappedDetails = $allDetails->map(function ($detail, $index) use ($totalGlobal, $jobNumber) {
+            $nomorUrut = $index + 1;
+            $detail->nomor_lengkap = "{$jobNumber}-{$nomorUrut}/{$totalGlobal}";
+            $detail->tgl_sampling = $detail->tanggal_pengambilan
+                ? Carbon::parse($detail->tanggal_pengambilan)->format('d/m/Y')
+                : '-';
+
+            return $detail;
+        });
+
+        // Grouping
+        $groupedDetails = $mappedDetails->groupBy('sample_matrix_id');
+
+        $finalOutput = [];
+
+        foreach ($groupedDetails as $matrixId => $items) {
+            // 1. Ambil Header Sample
+            // $dynamicSubHeaders = $items->pluck('identifikasi_contoh_uji')->toArray();
+            $dynamicSubHeaders = $items->pluck('identifikasi_contoh_uji')
+                                        ->map(fn ($val) => trim(explode('(', $val)[0]))
+                                        ->toArray();
+
+            // 2. Ambil Data Row Detail
+            $rows = $items->map(function ($item) {
+                return [
+                    $item->nomor_lengkap,
+                    $item->identifikasi_contoh_uji,
+                    $item->sampleMatrix->name ?? '-',
+                    $item->tgl_sampling,
+                ];
+            })->values()->toArray();
+
+            // --- BAGIAN BARU: AMBIL SEMUA PARAMETER ---
+            // flatMap akan menggabungkan semua parameter dari 5 detail (misalnya) menjadi 1 array panjang
+            $allParametersRaw = $items->flatMap(function ($detail) {
+                return $detail->lhpDocumentParameters;
+            });
+
+            $this->processParameters($allParametersRaw);
+
+            // Masukkan ke array output
+            $finalOutput[] = [
+                'headers' => $dynamicSubHeaders,
+                'data' => $rows,
+
+                // INI DATA YANG MAU ANDA LIHAT
+                // Kita convert ke array biar mudah dibaca saat dd()
+                'debug_parameters' => $allParametersRaw->toArray(),
+            ];
+        }
+
+        return $finalOutput;
+    }
+
+    public function processParameters($parameters)
+    {
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Library\Fpdf\JalintPDF;
 use App\Library\Tfpdf\JalintTFPDF;
 use App\Models\Invoice;
 use App\Models\LhpDocument;
@@ -13,237 +12,6 @@ use Illuminate\Http\Request;
 
 class JalintPdfController extends Controller
 {
-    public function suratTugas(Request $request, $id)
-    {
-        $data = $this->getDataOffer($id);
-
-        $parameters = $this->buildDataUjiForPdf($data);
-
-        $pdf = new JalintPDF();
-        $pdf->SetAutoPageBreak(true, 20);
-        $pdf->AliasNbPages(); // WAJIB: Agar {nb} terbaca jumlah total halaman
-        $pdf->AddPage();
-
-        $taskLetterNumber = $data->taskLetter->task_letter_number;
-        $namaKegiatan = $data->title;
-        $customerName = $data->customer->name;
-        $location = $data->location;
-        $dataPersonel = $data->taskLetter->officers;
-        $tanggalKegiatan = $this->formatTanggalRange($data->taskLetter->start_date, $data->taskLetter->end_date);
-
-        // Setting Font
-        $pdf->SetFont('Arial', 'BU', 14);
-        $pdf->Cell(0, 8, 'SURAT TUGAS', 0, 1, 'C');
-        $pdf->SetFont('Arial', '', 10);
-        $pdf->Cell(0, 2, "No: $taskLetterNumber", 0, 1, 'C');
-        $pdf->Ln(5);
-
-        // --- KALIMAT PEMBUKA (JUSTIFY) ---
-        $pdf->SetFont('Arial', '', 11);
-
-        // Ambil data dari database/variabel
-        $isiSurat = "Sehubungan dengan $namaKegiatan $customerName di $location, Maka dengan ini kami tugaskan:";
-
-        // MultiCell(lebar, tinggi_baris, teks, border, alignment)
-        // 'J' berarti Justify (rata kiri-kanan) agar terlihat rapi seperti dokumen resmi
-        $pdf->MultiCell(0, 6, $isiSurat, 0, 'J');
-
-        $pdf->Ln(5);
-
-        // $dataPersonel = [
-        //     ['nama' => 'Muhammad Rizki Ardicha', 'jabatan' => 'Koordinator PPC', 'ket' => '-'],
-        //     ['nama' => 'Muhammad Fauzi', 'jabatan' => 'PPC', 'ket' => '-'],
-        //     ['nama' => 'M. Habib Fadillah P', 'jabatan' => 'PPC', 'ket' => '-'],
-        //     ['nama' => 'Zul Hamdi', 'jabatan' => 'Driver', 'ket' => '-'],
-        // ];
-
-        // Membuat Tabel Header
-        // --- SET HEADER TABEL ---
-        // 1. Tentukan Lebar masing-masing kolom
-        $wNo = 10;
-        $wNama = 60;
-        $wJab = 45;
-        $wKet = 35;
-        $totalLebarTabel = $wNo + $wNama + $wJab + $wKet;
-
-        // 2. Hitung Margin Kiri agar Center
-        // A4 lebar standarnya 210mm
-        $lebarKertas = 210;
-        $marginTengah = ($lebarKertas - $totalLebarTabel) / 2;
-
-        $pdf->SetDrawColor(255, 128, 0);
-        $pdf->SetLineWidth(0.3);
-
-        // 3. Set Posisi X sebelum menggambar Header
-        $pdf->SetX($marginTengah);
-
-        // --- HEADER TABEL ---
-        $pdf->SetFont('Arial', 'B', 10);
-        $pdf->SetFillColor(255, 255, 255);
-        $pdf->Cell($wNo, 8, 'No', 1, 0, 'C', true);
-        $pdf->Cell($wNama, 8, 'Nama', 1, 0, 'L', true);
-        $pdf->Cell($wJab, 8, 'Jabatan', 1, 0, 'L', true);
-        $pdf->Cell($wKet, 8, 'Ket', 1, 1, 'L', true); // 1 artinya pindah baris
-
-        // --- ISI TABEL DINAMIS ---
-        $no = 1;
-        foreach ($dataPersonel as $row) {
-            // dd($row);
-            // PENTING: Di setiap awal baris baru, kita harus SetX lagi agar tetap di tengah
-            $pdf->SetX($marginTengah);
-
-            // Kolom Nomor (Bold)
-            $pdf->SetFont('Arial', 'B', 10);
-            $pdf->Cell($wNo, 8, $no++, 1, 0, 'C');
-
-            // Kolom Data (Normal)
-            $pdf->SetFont('Arial', '', 10);
-            $pdf->Cell($wNama, 8, $row['employee']['name'], 1, 0, 'L');
-            $pdf->Cell($wJab, 8, $row['position'], 1, 0, 'L');
-            $pdf->Cell($wKet, 8, $row['description'], 1, 1, 'L');
-        }
-        $pdf->SetDrawColor(0, 0, 0);
-        $pdf->Ln(5);
-        $pdf->SetFont('Arial', '', 11);
-
-        // Ambil data dari database/variabel
-        $informasiKegiatan = "Untuk melakukan pekerjaan tersebut diatas pada hari $tanggalKegiatan dengan rincian jumlah dan parameter Sebagai berikut:";
-
-        // MultiCell(lebar, tinggi_baris, teks, border, alignment)
-        // 'J' berarti Justify (rata kiri-kanan) agar terlihat rapi seperti dokumen resmi
-        $pdf->MultiCell(0, 6, $informasiKegiatan, 0, 'J');
-        $pdf->Ln(5);
-
-        // 2. Lebar Kolom
-        // 1. Pengaturan Font
-        // 1. Tentukan Lebar Kolom (Total 190mm jika margin 10mm, atau sesuaikan)
-        // Sesuai margin 30mm Anda, sisa ruang adalah 150mm.
-        $pdf->SetWidths([10, 30, 50, 55, 15, 15]);
-
-        // 2. Tentukan Alignment Kolom
-        // No: Center, Bahan: Center, BML: Justify, Parameter: Justify, Satuan: Center, Jumlah: Center
-        $pdf->SetAligns(['C', 'C', 'C', 'C', 'C', 'C']);
-
-        // 3. Header Tabel (Bold & Hitam Putih)
-        $pdf->SetFont('Arial', 'B', 8);
-        // Row() adalah fungsi dari script3.php yang otomatis menangani MultiCell
-        $pdf->Row([
-            'No',
-            'Bahan/Produk yang diuji',
-            'Baku Mutu Lingkungan (BML)',
-            'Jenis Pengujian/Parameter',
-            'Satuan',
-            'Jumlah',
-        ]);
-        $pdf->SetAligns(['C', 'C', 'L', 'L', 'C', 'C']);
-
-        // 4. Isi Tabel Dinamis
-        $pdf->SetFont('Arial', '', 8);
-        $no = 1;
-
-        foreach ($parameters as $parameter) {
-            // Gunakan mb_convert_encoding agar simbol µ dan °C dari database aman
-            $bahan = mb_convert_encoding($parameter['produk_uji'], 'ISO-8859-1', 'UTF-8');
-            $baku_mutu = mb_convert_encoding('SO₄²⁻', 'ISO-8859-1', 'UTF-8');
-            $parameter = mb_convert_encoding($parameter['parameter'], 'ISO-8859-1', 'UTF-8');
-            // $satuan = mb_convert_encoding($parameter['satuan'], 'ISO-8859-1', 'UTF-8');
-
-            // Sebelum memanggil Row, kita set No menjadi Bold
-            // Karena script3 menggunakan satu font per baris, kita bisa modifikasi sedikit:
-
-            $pdf->Row([
-                $no++, // Angka urutan (Akan ikut font reguler di baris ini)
-                $bahan,
-                $baku_mutu,
-                $parameter,
-                'Titik',
-                1,
-            ]);
-        }
-        $totaUji = count($data['samples']) >= 2 ? 15 : 35;
-        // ========================
-        $pdf->Ln($totaUji);
-        // 1. Set Lebar Kolom untuk fungsi Row()
-        $pdf->SetWidths([50, 40, 40, 40]);
-        $pdf->SetAligns(['C', 'C', 'C', 'C']);
-
-        // 2. Membuat Header Bertingkat (Manual)
-        $pdf->SetFont('Arial', 'BI', 8);
-
-        // Simpan posisi awal untuk baris kedua header
-        $x = $pdf->GetX();
-        $y = $pdf->GetY();
-
-        // Baris 1: Kotak yang tingginya 2 baris (Identifikasi & Matriks)
-        $pdf->Cell(50, 14, mb_convert_encoding('Identifikasi Uji / Sample ID', 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
-        $pdf->Cell(40, 14, mb_convert_encoding('Matriks / Matrix', 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
-
-        // Baris 1: Kotak Koordinat (Lebar gabungan 35+35 = 70)
-        $pdf->Cell(80, 7, mb_convert_encoding('Koordinat / Coordinate', 'ISO-8859-1', 'UTF-8'), 1, 1, 'C');
-
-        // Baris 2: Sub-header (Lintang & Bujur) di bawah Koordinat
-        $pdf->SetX($x + 50 + 40); // Geser posisi X ke awal kolom koordinat
-        $pdf->Cell(40, 7, mb_convert_encoding('Lintang / Latitude', 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
-        $pdf->Cell(40, 7, mb_convert_encoding('Bujur / Longitude', 'ISO-8859-1', 'UTF-8'), 1, 1, 'C');
-
-        // 3. Isi Tabel Dinamis
-        $pdf->SetFont('Arial', '', 8);
-        $pdf->SetAligns(['C', 'C', 'C', 'C']); // Kembali ke alignment isi
-
-        $dataSample = [
-            ['id' => 'UA-01 (Area Parkir)', 'matrix' => 'Udara Ambien', 'lat' => "03'24'55.2\"", 'long' => "102'44'12.8\""],
-            ['id' => 'UA-02 (Depan Kantor)', 'matrix' => 'Udara Ambien', 'lat' => "03'24'58.1\"", 'long' => "102'44'15.3\""],
-        ];
-
-        foreach ($dataSample as $row) {
-            $pdf->Row([
-                mb_convert_encoding($row['id'], 'ISO-8859-1', 'UTF-8'),
-                mb_convert_encoding($row['matrix'], 'ISO-8859-1', 'UTF-8'),
-                mb_convert_encoding($row['lat'], 'ISO-8859-1', 'UTF-8'),
-                mb_convert_encoding($row['long'], 'ISO-8859-1', 'UTF-8'),
-            ]);
-        }
-
-        // ========================
-        $pdf->Ln(10); // Memberi jarak dari tabel ke kalimat penutup
-
-        // --- KALIMAT PENUTUP ---
-        $pdf->SetFont('Arial', '', 11);
-        $isiPenutup = 'Demikian surat tugas ini diberikan agar dapat dilaksanakan dengan penuh tanggung jawab.';
-        // Gunakan MultiCell agar jika teks sangat panjang otomatis pindah baris
-        $pdf->MultiCell(0, 6, mb_convert_encoding($isiPenutup, 'ISO-8859-1', 'UTF-8'), 0, 'J');
-
-        $pdf->Ln(10); // Jarak menuju blok tanda tangan
-
-        // --- BLOK TANDA TANGAN (SEBELAH KANAN) ---
-        // Kita tentukan X di posisi 120mm (agar berada di area kanan kertas A4)
-        $xTandaTangan = 120;
-
-        // Tanggal
-        $pdf->SetX($xTandaTangan);
-        $pdf->Cell(60, 6, 'Jambi, 12 Desember 2026', 0, 1, 'L');
-
-        // Nama Instansi
-        $pdf->SetX($xTandaTangan);
-        $pdf->SetFont('Arial', 'B', 11); // Bold untuk nama instansi
-        $pdf->Cell(60, 6, 'Jalint Lab', 0, 1, 'L');
-
-        $pdf->Ln(20); // Ruang kosong untuk tanda tangan basah / stempel
-
-        // Nama Terang & Jabatan (Opsional)
-        $pdf->SetX($xTandaTangan);
-        $pdf->SetFont('Arial', 'BU', 11); // Bold Underline
-        $pdf->Cell(60, 6, 'Nama Pejabat Terkait', 0, 1, 'L');
-
-        $pdf->SetX($xTandaTangan);
-        $pdf->SetFont('Arial', '', 11);
-        $pdf->Cell(60, 6, 'Manager Laboratorium', 0, 1, 'L');
-        // $pdf->Cell(40, 10, mb_convert_encoding('Suhu 25°C & Kadar 150 µg/Nm3', 'ISO-8859-1', 'UTF-8'), 1, 0);
-
-        return response($pdf->Output('S'), 200)
-                ->header('Content-Type', 'application/pdf');
-    }
-
     public function suratTugasTFPDF(Request $request, $id)
     {
         $data = $this->getDataOffer($id);
@@ -264,14 +32,14 @@ class JalintPdfController extends Controller
         $tanggalKegiatan = $this->formatTanggalRange($data->taskLetter->start_date, $data->taskLetter->end_date);
 
         // --- JUDUL ---
-        $pdf->SetFont('DejaVu', 'B', 14);
+        $pdf->SetFont('PlusJakartaSans', 'B', 14);
         $pdf->Cell(0, 8, 'SURAT TUGAS', 0, 1, 'C');
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(0, 2, "No: $taskLetterNumber", 0, 1, 'C');
         $pdf->Ln(8);
 
         // --- KALIMAT PEMBUKA ---
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $isiSurat = "Sehubungan dengan $namaKegiatan $customerName di $location, maka dengan ini kami tugaskan:";
         $pdf->MultiCell(0, 6, $isiSurat, 0, 'J');
         $pdf->Ln(5);
@@ -280,12 +48,12 @@ class JalintPdfController extends Controller
         $pdf->SetDrawColor(255, 128, 0);
         $pdf->SetWidths([10, 60, 55, 65]);
         $pdf->SetAligns(['C', 'L', 'L', 'L']);
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
 
         // Header Tabel
         $pdf->Row(['No', 'Nama', 'Jabatan', 'Keterangan']);
 
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $no = 1;
         foreach ($dataPersonel as $row) {
             $pdf->Row([
@@ -299,7 +67,7 @@ class JalintPdfController extends Controller
         $pdf->Ln(8);
 
         // --- INFORMASI PARAMETER ---
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->MultiCell(0, 6, "Untuk melakukan pekerjaan tersebut diatas pada hari $tanggalKegiatan dengan rincian sebagai berikut:", 0, 'J');
         $pdf->Ln(5);
 
@@ -353,7 +121,7 @@ class JalintPdfController extends Controller
 
         // --- PENUTUP ---
         $pdf->Ln(10);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->MultiCell(0, 6, 'Demikian surat tugas ini diberikan agar dapat dilaksanakan dengan penuh tanggung jawab.', 0, 'J');
 
         // --- TANDA TANGAN ---
@@ -361,11 +129,11 @@ class JalintPdfController extends Controller
         $pdf->SetX(130);
         $pdf->Cell(60, 6, 'Jambi, '.date('d F Y'), 0, 1, 'L');
         $pdf->SetX(130);
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
         $pdf->Cell(60, 6, 'Jalint Lab', 0, 1, 'L');
         $pdf->Ln(20);
         $pdf->SetX(130);
-        $pdf->SetFont('DejaVu', 'BU', 11);
+        $pdf->SetFont('PlusJakartaSans', 'BU', 11);
         $pdf->Cell(60, 6, 'Nama Pejabat Terkait', 0, 1, 'L');
 
         return response($pdf->Output('S'), 200)->header('Content-Type', 'application/pdf');
@@ -413,16 +181,16 @@ class JalintPdfController extends Controller
         // ======================
         // JUDUL
         // ======================
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
         $pdf->Cell(0, 5, 'FORMULIR PERMINTAAN PENGUJIAN CONTOH UJI', 0, 1, 'C');
-        $pdf->SetFont('DejaVu', 'B', 9);
+        $pdf->SetFont('PlusJakartaSans', 'B', 9);
         $pdf->Cell(0, 5, 'JOB NUMBER: LAB-JLI-.......................', 0, 1, 'C');
         $pdf->Ln(3);
 
         // ======================
         // INFORMASI PELANGGAN (Dinamis dengan rowWithDots)
         // ======================
-        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->SetFont('PlusJakartaSans', '', 9);
         $lineHeight = 6;
 
         // Gunakan MultiCell di dalam rowWithDots agar Alamat panjang tidak terpotong
@@ -492,7 +260,7 @@ class JalintPdfController extends Controller
         // ======================
         // STATUS CONTOH UJI
         // ======================
-        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->SetFont('PlusJakartaSans', '', 9);
         $pdf->Cell(35, 5, 'Status Contoh Uji :', 0, 0);
 
         // Checkbox Dinamis
@@ -507,13 +275,13 @@ class JalintPdfController extends Controller
         // ======================
         // TANDA TANGAN
         // ======================
-        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->SetFont('PlusJakartaSans', '', 9);
         $pdf->Cell(70, 5, 'PPCU / Perwakilan Pelanggan,', 0, 0, 'C');
         $pdf->Cell(0, 5, 'Jambi, '.$tanggalDiterima, 0, 1, 'R');
 
         $pdf->Ln(20);
 
-        $pdf->SetFont('DejaVu', 'U', 9);
+        $pdf->SetFont('PlusJakartaSans', 'U', 9);
         $pdf->Cell(70, 5, '( Ulfi Atha Tifalni )', 0, 0, 'C');
         $pdf->Cell(0, 5, "( $pic )", 0, 1, 'R');
 
@@ -658,7 +426,7 @@ class JalintPdfController extends Controller
                                 ->translatedFormat('d F Y');
         $judulPenawaran = $invoices->offer->title;
         // --- Header tanggal ---
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(0, 5, "Jambi, {$tanggalSurat}", 0, 1, 'R');
         $pdf->Ln(10);
 
@@ -668,18 +436,18 @@ class JalintPdfController extends Controller
 
         $pdf->Cell(25, 6, 'Perihal', 0, 0);
         $pdf->Cell(5, 6, ':', 0, 0);
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
         $pdf->Cell(0, 6, 'Permohonan Pembayaran Pengujian Sampel', 0, 1);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
 
         $pdf->Ln(10);
 
         // --- Tujuan surat ---
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
         $pdf->Cell(0, 6, 'Kepada Yth :', 0, 1);
         $pdf->Cell(0, 6, $customerName, 0, 1);
 
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(0, 6, "U.p {$contactName}", 0, 1);
         $pdf->Cell(0, 6, 'di', 0, 1);
         $pdf->Cell(0, 6, $alamat, 0, 1);
@@ -729,11 +497,11 @@ class JalintPdfController extends Controller
         $pdf->Ln(15);
 
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
         $pdf->Cell(0, 6, 'Retni Azmalia, S.E', 0, 1);
 
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(0, 6, 'Manajer Keuangan', 0, 1);
     }
 
@@ -742,7 +510,7 @@ class JalintPdfController extends Controller
      */
     private function barisInfo($pdf, string $label, string $value): void
     {
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(25, 6, $label, 0, 0);
         $pdf->Cell(5, 6, ':', 0, 0);
         $pdf->Cell(0, 6, $value, 0, 1);
@@ -780,23 +548,23 @@ class JalintPdfController extends Controller
 
         // --- Baris: Telah terima dari ---
         $pdf->SetX(15);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(40, 10, 'Telah terima dari', 0, 0);
         $pdf->Cell(5, 10, ':', 0, 0);
-        $pdf->SetFont('DejaVu', 'B', 12);
+        $pdf->SetFont('PlusJakartaSans', 'B', 12);
         $pdf->Cell(0, 10, $customerName, 0, 1);
 
         // --- Baris: Uang sejumlah ---
         $pdf->SetX(15);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(40, 10, 'Uang sejumlah', 0, 0);
         $pdf->Cell(5, 10, ':', 0, 0);
-        $pdf->SetFont('DejaVu', 'BI', 11); // Ukuran font diperkecil sedikit
+        $pdf->SetFont('PlusJakartaSans', 'BI', 11); // Ukuran font diperkecil sedikit
         $pdf->MultiCell(0, 10, AmountToWordsUtil::toWords($invoices->total_amount), 0, 1);
 
         // --- Baris: Untuk Pembayaran ---
         $pdf->SetX(15);
-        $pdf->SetFont('DejaVu', '', 11);
+        $pdf->SetFont('PlusJakartaSans', '', 11);
         $pdf->Cell(40, 8, 'Untuk Pembayaran', 0, 0);
         $pdf->Cell(5, 8, ':', 0, 0);
         // MultiCell dipersempit lebarnya (90mm) agar tidak menabrak tanda tangan
@@ -806,7 +574,7 @@ class JalintPdfController extends Controller
         // Diposisikan relatif terhadap startY
         $pdf->SetXY(15, $startY + 65);
         $pdf->SetFillColor(230, 230, 230);
-        $pdf->SetFont('DejaVu', 'BI', 13);
+        $pdf->SetFont('PlusJakartaSans', 'BI', 13);
         $pdf->Cell(55, 10, $total, 0, 0, 'C', true);
 
         // --- Bagian Tanda Tangan ---
@@ -814,22 +582,22 @@ class JalintPdfController extends Controller
         $currentY = $startY + 45; // Mulai tanda tangan di tengah kanan bingkai
 
         $pdf->SetXY($startX, $currentY);
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(0, 5, "Jambi, {$tanggalSurat}.", 0, 1, 'L');
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'Yang menerima :', 0, 1, 'L');
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
         $pdf->Cell(0, 5, 'Jalint Lab', 0, 1, 'L');
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'a.n Direktur', 0, 1, 'L');
 
         // Jarak tanda tangan ke Nama Manajer (diperpendek jaraknya agar tidak menabrak footer)
         $pdf->SetXY($startX, $currentY + 26);
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
         $pdf->Cell(0, 5, 'Refni Azmalia, S.E', 0, 1, 'L');
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(0, 5, 'Manajer Keuangan', 0, 1, 'L');
     }
 
@@ -861,7 +629,7 @@ class JalintPdfController extends Controller
         // =====================================================
         // HEADER
         // =====================================================
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $this->barisInfo($pdf, 'Invoice No.', $invoices->invoice_number);
         $this->barisInfo($pdf, 'Tanggal', $tanggal);
         $this->barisInfo($pdf, 'N.P.W.P', '31.770.541.6-331.000');
@@ -869,9 +637,9 @@ class JalintPdfController extends Controller
         $pdf->Ln(10);
 
         // --- Tujuan ---
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
         $this->barisInfo($pdf, 'Kepada Yth', $customerName);
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(30, 5, '', 0, 0);
         $pdf->Cell(0, 5, "U.p {$contactName}", 0, 1);
         $pdf->Cell(30, 5, '', 0, 0);
@@ -931,12 +699,12 @@ class JalintPdfController extends Controller
         // =====================================================
         // TABEL
         // =====================================================
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
         $pdf->Cell(10, 7, 'No', 1, 0, 'C');
         $pdf->Cell(130, 7, 'URAIAN', 1, 0, 'C');
         $pdf->Cell(50, 7, 'JUMLAH (Rp)', 1, 1, 'C');
 
-        $pdf->SetFont('DejaVu', '', 9);
+        $pdf->SetFont('PlusJakartaSans', '', 9);
 
         // --- Subtotal ---
         // Gunakan MultiCell untuk uraian agar jika judul sangat panjang, tabel tidak hancur
@@ -972,7 +740,7 @@ class JalintPdfController extends Controller
         // =====================================================
         // BAGIAN TOTAL & TERBILANG (DINAMIS)
         // =====================================================
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
 
         $currentX = $pdf->GetX();
         $currentY = $pdf->GetY();
@@ -983,7 +751,7 @@ class JalintPdfController extends Controller
         $pdf->Cell($lebarTerbilang, 7, 'Terbilang :', 'LTR', 1, 'L');
 
         // 2. Gambar Isi Terbilang (MultiCell)
-        $pdf->SetFont('DejaVu', 'BI', 9);
+        $pdf->SetFont('PlusJakartaSans', 'BI', 9);
         $terbilangTeks = AmountToWordsUtil::toWords($invoices->total_amount).' Rupiah';
 
         // Hitung tinggi terbilang untuk menyamakan kotak sebelah kanan
@@ -995,7 +763,7 @@ class JalintPdfController extends Controller
 
         // 3. Pindah kembali ke posisi Y awal untuk menggambar sel TOTAL di kanan
         $pdf->SetXY($currentX + $lebarTerbilang, $currentY);
-        $pdf->SetFont('DejaVu', 'B', 11);
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
 
         // Gambar sel Total dengan tinggi yang sudah dihitung (tinggi label + tinggi multicell)
         $pdf->Cell($lebarTotal, $tinggiTotalBaris, "Rp $total", 1, 1, 'R');
@@ -1008,7 +776,7 @@ class JalintPdfController extends Controller
         // =====================================================
         $pdf->Ln(5);
 
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(50, 5, 'Transfer Pembayaran Kepada', 0, 0);
         $pdf->Cell(5, 5, ':', 0, 1);
 
@@ -1029,7 +797,7 @@ class JalintPdfController extends Controller
         $pdf->Ln(10);
         $startX = 120;
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', 'B', 10);
+        $pdf->SetFont('PlusJakartaSans', 'B', 10);
         $pdf->Cell(0, 5, 'Jalint Lab', 0, 1, 'L');
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'a.n Direktur', 0, 1, 'L');
@@ -1037,7 +805,7 @@ class JalintPdfController extends Controller
         $pdf->SetX($startX);
         $pdf->Cell(0, 5, 'Refni Azmalia, S.E', 0, 1, 'L');
         $pdf->SetX($startX);
-        $pdf->SetFont('DejaVu', '', 10);
+        $pdf->SetFont('PlusJakartaSans', '', 10);
         $pdf->Cell(0, 5, 'Manajer Keuangan', 0, 1, 'L');
     }
 }

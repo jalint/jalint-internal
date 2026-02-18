@@ -13,7 +13,7 @@ class LhpDocumentDetail extends Model
         return $this->belongsTo(LhpDocument::class, 'lhp_document_id');
     }
 
-    public function lhpDocumentParamters()
+    public function lhpDocumentParameters()
     {
         return $this->hasMany(LhpDocumentParameter::class);
     }
