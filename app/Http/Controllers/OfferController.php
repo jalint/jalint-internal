@@ -20,8 +20,8 @@ class OfferController extends Controller
 {
     public function summary(Request $request)
     {
-        $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
-        $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
+        // $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
+        // $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
 
         $role = auth()->user()
                 ->roles()
@@ -36,20 +36,20 @@ class OfferController extends Controller
         $base = OfferVisibility::forRole($role)
             ->with('currentReview.reviewStep');
 
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $base->whereBetween('offer_date', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $base->whereBetween('offer_date', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($request->filled('start_date')) {
-            $base->whereDate('offer_date', '>=', $startDate);
-        }
+        // if ($request->filled('start_date')) {
+        //     $base->whereDate('offer_date', '>=', $startDate);
+        // }
 
-        if ($request->filled('end_date')) {
-            $base->whereDate('offer_date', '<=', $endDate);
-        }
+        // if ($request->filled('end_date')) {
+        //     $base->whereDate('offer_date', '<=', $endDate);
+        // }
 
         $summary = [];
         $summary['all'] = (clone $base)->count();
@@ -265,8 +265,8 @@ class OfferController extends Controller
 
     public function index(Request $request)
     {
-        $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
-        $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
+        // $startDate = $request->filled('start_date') ? Carbon::createFromFormat('Y-m-d', $request->start_date) : now()->startOfMonth();
+        // $endDate = $request->filled('end_date') ? Carbon::createFromFormat('Y-m-d', $request->end_date) : now()->endOFMonth();
 
         $role = auth()->user()
                 ->roles()
@@ -389,20 +389,20 @@ class OfferController extends Controller
         }
 
         // ===== DATE FILTER =====
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $query->whereBetween('offer_date', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $query->whereBetween('offer_date', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($request->filled('start_date')) {
-            $query->whereDate('offer_date', '>=', $startDate);
-        }
+        // if ($request->filled('start_date')) {
+        //     $query->whereDate('offer_date', '>=', $startDate);
+        // }
 
-        if ($request->filled('end_date')) {
-            $query->whereDate('offer_date', '<=', $endDate);
-        }
+        // if ($request->filled('end_date')) {
+        //     $query->whereDate('offer_date', '<=', $endDate);
+        // }
 
         $offers = $query->paginate($request->per_page ?? 15);
 

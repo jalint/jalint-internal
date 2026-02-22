@@ -20,20 +20,20 @@ class TaskLetterController extends Controller
 
         $base = TaskLetterVisibility::forRole($role);
 
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $base->whereBetween('created_at', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $base->whereBetween('created_at', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($request->filled('start_date')) {
-            $base->whereDate('created_at', '>=', $request->start_date);
-        }
+        // if ($request->filled('start_date')) {
+        //     $base->whereDate('created_at', '>=', $request->start_date);
+        // }
 
-        if ($request->filled('end_date')) {
-            $base->whereDate('created_at', '<=', $request->end_date);
-        }
+        // if ($request->filled('end_date')) {
+        //     $base->whereDate('created_at', '<=', $request->end_date);
+        // }
 
         $summary = [];
         $summary['all'] = (clone $base)->count();
@@ -92,8 +92,8 @@ class TaskLetterController extends Controller
 
         $filter = $request->query('filter', 'all');
         $search = $request->query('search');
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        // $startDate = $request->query('start_date');
+        // $endDate = $request->query('end_date');
 
         $query = TaskLetterVisibility::forRole($role);
 
@@ -102,20 +102,20 @@ class TaskLetterController extends Controller
         | DEFAULT: BULAN BERJALAN
         |--------------------------------------------------------------------------
         */
-        if (!$startDate && !$endDate) {
-            $query->whereBetween('created_at', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$startDate && !$endDate) {
+        //     $query->whereBetween('created_at', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($startDate) {
-            $query->whereDate('created_at', '>=', $startDate);
-        }
+        // if ($startDate) {
+        //     $query->whereDate('created_at', '>=', $startDate);
+        // }
 
-        if ($endDate) {
-            $query->whereDate('created_at', '<=', $endDate);
-        }
+        // if ($endDate) {
+        //     $query->whereDate('created_at', '<=', $endDate);
+        // }
 
         /*
         |--------------------------------------------------------------------------

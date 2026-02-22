@@ -32,20 +32,20 @@ class LhpDocumentController extends Controller
 
         $base = LhpVisibility::forRole($role)->with('currentReview');
 
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $base->whereBetween('created_at', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $base->whereBetween('created_at', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($request->filled('start_date')) {
-            $base->whereDate('created_at', '>=', $request->start_date);
-        }
+        // if ($request->filled('start_date')) {
+        //     $base->whereDate('created_at', '>=', $request->start_date);
+        // }
 
-        if ($request->filled('end_date')) {
-            $base->whereDate('created_at', '<=', $request->end_date);
-        }
+        // if ($request->filled('end_date')) {
+        //     $base->whereDate('created_at', '<=', $request->end_date);
+        // }
 
         $summary = [];
         $summary['all'] = (clone $base)->count();
@@ -170,20 +170,20 @@ class LhpDocumentController extends Controller
         | DEFAULT: BULAN BERJALAN
         |--------------------------------------------------------------------------
         */
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $query->whereBetween('created_at', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $query->whereBetween('created_at', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
-        if ($request->filled('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
-        }
+        // if ($request->filled('start_date')) {
+        //     $query->whereDate('created_at', '>=', $request->start_date);
+        // }
 
-        if ($request->filled('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
-        }
+        // if ($request->filled('end_date')) {
+        //     $query->whereDate('created_at', '<=', $request->end_date);
+        // }
 
         /*
         |--------------------------------------------------------------------------

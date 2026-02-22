@@ -20,31 +20,31 @@ class CustomerOfferController extends Controller
         $base = Offer::query()
             ->where('customer_id', $customerId);
 
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $base->whereBetween('offer_date', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $base->whereBetween('offer_date', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
         // =========================
         // FILTER TANGGAL MANUAL
         // =========================
-        if ($request->filled('start_date')) {
-            $base->whereDate(
-                'offer_date',
-                '>=',
-                Carbon::createFromFormat('Y-m-d', $request->start_date)
-            );
-        }
+        // if ($request->filled('start_date')) {
+        //     $base->whereDate(
+        //         'offer_date',
+        //         '>=',
+        //         Carbon::createFromFormat('Y-m-d', $request->start_date)
+        //     );
+        // }
 
-        if ($request->filled('end_date')) {
-            $base->whereDate(
-                'offer_date',
-                '<=',
-                Carbon::createFromFormat('Y-m-d', $request->end_date)
-            );
-        }
+        // if ($request->filled('end_date')) {
+        //     $base->whereDate(
+        //         'offer_date',
+        //         '<=',
+        //         Carbon::createFromFormat('Y-m-d', $request->end_date)
+        //     );
+        // }
 
         return response()->json([
             'all' => (clone $base)->count(),
@@ -111,10 +111,10 @@ class CustomerOfferController extends Controller
     {
         $customerId = auth('customer')->user()->customer_id;
 
-        $request->validate([
-            'start_date' => ['nullable', 'date_format:Y-m-d'],
-            'end_date' => ['nullable', 'date_format:Y-m-d'],
-        ]);
+        // $request->validate([
+        //     'start_date' => ['nullable', 'date_format:Y-m-d'],
+        //     'end_date' => ['nullable', 'date_format:Y-m-d'],
+        // ]);
 
         // =========================
         // BASE QUERY
@@ -131,31 +131,31 @@ class CustomerOfferController extends Controller
         // =========================
         // DEFAULT BULAN BERJALAN
         // =========================
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $query->whereBetween('offer_date', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ]);
-        }
+        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
+        //     $query->whereBetween('offer_date', [
+        //         now()->startOfMonth(),
+        //         now()->endOfMonth(),
+        //     ]);
+        // }
 
         // =========================
         // FILTER TANGGAL MANUAL
         // =========================
-        if ($request->filled('start_date')) {
-            $query->whereDate(
-                'offer_date',
-                '>=',
-                Carbon::createFromFormat('Y-m-d', $request->start_date)
-            );
-        }
+        // if ($request->filled('start_date')) {
+        //     $query->whereDate(
+        //         'offer_date',
+        //         '>=',
+        //         Carbon::createFromFormat('Y-m-d', $request->start_date)
+        //     );
+        // }
 
-        if ($request->filled('end_date')) {
-            $query->whereDate(
-                'offer_date',
-                '<=',
-                Carbon::createFromFormat('Y-m-d', $request->end_date)
-            );
-        }
+        // if ($request->filled('end_date')) {
+        //     $query->whereDate(
+        //         'offer_date',
+        //         '<=',
+        //         Carbon::createFromFormat('Y-m-d', $request->end_date)
+        //     );
+        // }
 
         // =========================
         // FILTER STATUS (SINKRON SUMMARY)
