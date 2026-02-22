@@ -9,6 +9,9 @@ class LhpFinalTFPDF extends \tFPDF
     public $showHeader = true;
     public $showFooter = true;
     public $lhpFinalFooter = false;
+    public $lhpFinalParameterFooter = false;
+
+    public $setRevision;
 
     public function __construct()
     {
@@ -128,7 +131,15 @@ class LhpFinalTFPDF extends \tFPDF
             $this->SetY(-15);
             $this->SetFont('PlusJakartaSans', '', 8);
             $this->Cell(100, 5, 'No. Dok.: FSOP.JLI-11.1', 0, 0, 'L');
-            $this->Cell(0, 5, 'No. Revisi/Terbit: 5/2', 0, 1, 'R');
+            $this->Cell(0, 5, $this->setRevision, 0, 1, 'R');
+        }
+
+        if ($this->lhpFinalParameterFooter) {
+            $this->SetY(-15);
+            $this->SetFont('PlusJakartaSans', '', 8);
+            $this->Cell(100, 5, 'No. Dok.: FSOP.JLI-11.1', 0, 0, 'L');
+            $this->Cell(0, 5, $this->setRevision, 0, 1, 'C');
+            $this->Cell(0, 5, 'Halaman '.$this->PageNo().' dari {nb}', 0, 1, 'R');
         }
     }
 }

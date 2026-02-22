@@ -22,4 +22,4 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-/app/Http/Library/Tfpdf/font/*
+/app/Http/Library/Tfpdf/font/unifont/*

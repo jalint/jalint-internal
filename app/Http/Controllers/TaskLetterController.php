@@ -208,6 +208,7 @@ class TaskLetterController extends Controller
             'officers.*.id' => ['required', 'exists:employees,id'],
             'officers.*.position' => ['nullable', 'string'],
             'officers.*.description' => ['nullable', 'string'],
+            'surat_rencana_contoh_uji' => ['nullable', 'file', 'mimes:pdf,jpg,png,jpeg', 'max:5120'],
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -222,6 +223,11 @@ class TaskLetterController extends Controller
                 abort(400, 'Surat tugas sudah dibuat untuk penawaran ini');
             }
 
+            if ($request->hasFile('surat_rencana_contoh_uji')) {
+                $fileRencanaContohUji = $request->file('surat_rencana_contoh_uji')
+                    ->store('rencana_contoh_uji', 'public');
+            }
+
             $taskLetter = TaskLetter::create([
                 'offer_id' => $offer->id,
                 'task_letter_number' => $this->generateTaskLetterNumber(),
@@ -229,6 +235,7 @@ class TaskLetterController extends Controller
                 'end_date' => $request->end_date,
                 'note' => $request->note,
                 'status' => 'pending',
+                'surat_rencana_contoh_uji' => $fileRencanaContohUji ?? null,
                 'created_by' => auth()->id(),
             ]);
 

@@ -280,19 +280,18 @@ class CustomerBillingController extends Controller
 
         // 4. KONDISIONAL: Load LHP Document
         // Jika lunas ($isPaid == true), baru kita ambil data LHP
-        if ($isPaid) {
-            $lhpDocument = LhpDocument::query()
-               ->with([
-                   'details',
-                   'details.sampleMatrix',
-                   'details.lhpDocumentParameters',
-                   'details.lhpDocumentParameters.offerSampleParameter',
-                   'details.lhpDocumentParameters.offerSampleParameter.testParameter:id,test_method_id,name',
-                   'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
-                   'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
-               ])
-            ->where('offer_id', $offer->id)->get();
-        }
+
+        $lhpDocument = LhpDocument::query()
+           ->with([
+               'details',
+               'details.sampleMatrix',
+               'details.lhpDocumentParameters',
+               'details.lhpDocumentParameters.offerSampleParameter',
+               'details.lhpDocumentParameters.offerSampleParameter.testParameter:id,test_method_id,name',
+               'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
+               'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod:id,name',
+           ])
+        ->where('offer_id', $offer->id)->get();
 
         // 5. Format Data Tambahan (Append ke object Offer)
         // Supaya frontend enak bacanya, kita buat property baru 'payment_summary'

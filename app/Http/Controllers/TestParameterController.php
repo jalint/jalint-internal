@@ -100,7 +100,7 @@ class TestParameterController extends Controller
                 return [
                     'sample_type_id' => $sampleType->id,
                     'sample_type_name' => $sampleType->name,
-                    'regulation' => $sampleType->name,
+                    'regulation' => $sampleType->regulation,
                     'parameters' => $sampleType->testParameters->map(function ($param) {
                         return [
                             'id' => $param->id,

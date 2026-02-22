@@ -6,6 +6,7 @@ use App\Library\Tfpdf\LhpFinalTFPDF;
 use App\Models\LhpDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LhpFinalPdfController extends Controller
@@ -18,15 +19,25 @@ class LhpFinalPdfController extends Controller
         $pdf->AddPage('P');
         $pdf->SetMargins(20, 20, 20);
 
-        $lhp = LhpDocument::with(['offer.customer.customerContact', 'details.sampleMatrix', 'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod'])->findOrFail($request->id);
+        $lhp = LhpDocument::with([
+            'offer.customer.customerContact',
+            'details.sampleMatrix',
+            'details.lhpDocumentParameters.offerSampleParameter.testParameter.testMethod'])
+        ->findOrFail($request->id);
+
+        $revision = $this->getRevision($lhp->offer_id);
+        $pdf->setRevision = $revision;
+
         $this->generateLHPClean($pdf, $lhp);
 
         $pdf->AddPage('P');
         $pdf->SetMargins(10, 10, 10);
         $this->testLhp($pdf, $lhp);
 
+        $pdf->lhpFinalFooter = false;
+        $pdf->lhpFinalParameterFooter = true;
         $dataHeaders = $this->getDataHeaderLHP($lhp);
-        // dd($dataHeaders);
+
         foreach ($dataHeaders as $header) {
             $pdf->AddPage('P');
             $pdf->SetMargins(10, 10, 10);
@@ -222,9 +233,9 @@ class LhpFinalPdfController extends Controller
         // Kita harus mengecilkan kolom tetap agar sisa ruang untuk hasil cukup.
 
         $w_no = 8;     // Dikecilkan dari 10
-        $w_param = 50; // Dikecilkan dari 70 agar muat
+        $w_param = 48; // Dikecilkan dari 70 agar muat
         $w_bml = 15;   // Dikecilkan dari 20
-        $w_unit = 12;  // Dikecilkan dari 20
+        $w_unit = 14;  // Dikecilkan dari 20
         $w_method = 25; // Dikecilkan dari 40
 
         $totalFixedW = $w_no + $w_param + $w_bml + $w_unit + $w_method; // Total = 110mm
@@ -254,7 +265,7 @@ class LhpFinalPdfController extends Controller
         $currY = $pdf->GetY();
 
         $pdf->SetFont('DejaVu', 'B', 7);
-        $pdf->SetFillColor(220, 240, 255);
+        $pdf->SetFillColor(220, 240, 255); // -> Warna Biru
 
         // A. Header Kiri (NO, PARAMETER)
         $leftHeaders = ['NO', 'PARAMETER'];
@@ -395,7 +406,7 @@ class LhpFinalPdfController extends Controller
         $pdf->SetFont('DejaVu', '', 7);
         $yCurrent = $currY + $h_total;
 
-        foreach ($dataRows as $row) {
+        foreach ($headers['parameters'] as $row) {
             $xCurrent = $startX;
 
             // Hitung Tinggi Baris
@@ -455,8 +466,16 @@ class LhpFinalPdfController extends Controller
             $yCurrent += $maxH;
         }
 
+        $pdf->SetY($yCurrent);
+
+        // Cek ruang sebelum NOTES
+        $remainingSpace = $pdf->GetPageHeight() - $pdf->GetY();
+        if ($remainingSpace < 45) {
+            $pdf->AddPage();
+        }
+
         // --- 6. BAGIAN KETERANGAN (NOTES) YANG RAPI ---
-        $pdf->Ln(5); // Jarak dari tabel
+        $pdf->Ln(6); // Jarak dari tabel
 
         $pdf->SetFont('DejaVu', '', 6); // Font Kecil
 
@@ -533,6 +552,163 @@ class LhpFinalPdfController extends Controller
 
         $pdf->SetFont('DejaVu', 'BI', 7); // Bold Italic
         $pdf->Cell(0, 4, 'The result relate only to the samples tested and this report shall not be reproduced except in full.', 0, 1, 'C');
+    }
+
+    public function generateCertificateDebug($pdf, $lhp, $headers)
+    {
+        $pdf->SetFont('PlusJakartaSans', '', 8);
+
+        // ================= HEADER =================
+        $pdf->SetFont('PlusJakartaSans', 'BU', 12);
+        $pdf->Cell(0, 6, 'LAPORAN HASIL PENGUJIAN', 0, 1, 'C');
+
+        $pdf->SetFont('PlusJakartaSans', 'BI', 11);
+        $pdf->Cell(0, 6, 'CERTIFICATE OF ANALYSIS', 0, 1, 'C');
+
+        $pdf->SetFont('PlusJakartaSans', 'B', 11);
+        $pdf->Cell(0, 6, $lhp->job_number, 0, 1, 'C');
+
+        $pdf->Cell(0, 6, Str::upper($lhp->offer->customer->name), 0, 1, 'C');
+        $pdf->Ln(5);
+
+        // ================= TABEL ATAS =================
+        $w = [45, 75, 35, 35];
+        $tableStartY = $pdf->GetY();
+
+        $pdf->SetFont('DejaVu', '', 8);
+
+        foreach ($headers['data'] as $row) {
+            $pdf->Cell($w[0], 6, $row[0], 0, 0, 'C');
+            $pdf->Cell($w[1], 6, $row[1], 0, 0, 'C');
+            $pdf->Cell($w[2], 6, $row[2], 0, 0, 'C');
+            $pdf->Cell($w[3], 6, $row[3], 0, 0, 'C');
+            $pdf->Ln();
+        }
+
+        $tableHeight = $pdf->GetY() - $tableStartY;
+        $pdf->Rect(10, $tableStartY, array_sum($w), $tableHeight);
+
+        $pdf->Ln(3);
+
+        // ================= TABEL BAWAH =================
+        $pdf->SetFont('DejaVu', '', 7);
+        $startX = 10;
+
+        $dynamicSubHeaders = $headers['headers'];
+        $countResults = count($dynamicSubHeaders);
+
+        $w_no = 8;
+        $w_param = 48;
+        $w_bml = 15;
+        $w_unit = 14;
+        $w_method = 25;
+
+        $totalFixedW = $w_no + $w_param + $w_bml + $w_unit + $w_method;
+        $availableForResults = 190 - $totalFixedW;
+        $w_res_item = $availableForResults / $countResults;
+
+        $w2 = [];
+        $w2[] = $w_no;
+        $w2[] = $w_param;
+
+        for ($i = 0; $i < $countResults; ++$i) {
+            $w2[] = $w_res_item;
+        }
+
+        $w2[] = $w_bml;
+        $w2[] = $w_unit;
+        $w2[] = $w_method;
+
+        $currY = $pdf->GetY();
+        $h_total = 12;
+        $yCurrent = $currY + $h_total;
+
+        foreach ($headers['parameters'] as $row) {
+            $xCurrent = $startX;
+            $maxH = 5;
+
+            // Hitung tinggi baris
+            for ($i = 0; $i < count($w2); ++$i) {
+                $pdf->SetXY(300, 0);
+                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L');
+                $textHeight = $pdf->GetY();
+                if ($textHeight > $maxH) {
+                    $maxH = $textHeight;
+                }
+            }
+
+            if ($maxH > 5) {
+                $maxH += 2;
+            }
+
+            // Page break kontrol tabel
+            if ($yCurrent + $maxH > $pdf->GetPageHeight() - 20) {
+                $pdf->AddPage();
+                $pdf->SetFont('DejaVu', '', 7);
+                $yCurrent = 10;
+            }
+
+            // Render cell
+            for ($i = 0; $i < count($w2); ++$i) {
+                $pdf->SetXY($xCurrent, $yCurrent);
+                $pdf->Rect($xCurrent, $yCurrent, $w2[$i], $maxH, 'D');
+
+                $pdf->SetXY(300, 0);
+                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L');
+                $textHeight = $pdf->GetY();
+
+                $yCenter = $yCurrent + (($maxH - $textHeight) / 2);
+                $pdf->SetXY($xCurrent, $yCenter);
+
+                $align = 'C';
+                if ($i == 1 || $i == count($w2) - 1) {
+                    $align = 'L';
+                }
+
+                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, $align);
+                $xCurrent += $w2[$i];
+            }
+
+            $yCurrent += $maxH;
+        }
+
+        // ================= FIX UTAMA =================
+        // Sinkronisasi posisi PDF dengan posisi tabel terakhir
+        $pdf->SetY($yCurrent);
+
+        // Cek ruang sebelum NOTES
+        $remainingSpace = $pdf->GetPageHeight() - $pdf->GetY();
+        if ($remainingSpace < 45) {
+            $pdf->AddPage();
+        }
+
+        // ================= NOTES =================
+        $pdf->Ln(6);
+        $pdf->SetFont('DejaVu', '', 6);
+
+        $xSymbol = 10;
+        $xText = 14;
+        $wText = 186;
+        $hLine = 3;
+
+        $pdf->SetXY($xSymbol, $pdf->GetY());
+        $pdf->Cell(4, $hLine, '(*)', 0, 0, 'L');
+
+        $pdf->SetXY($xText, $pdf->GetY());
+        $pdf->MultiCell($wText, $hLine,
+            'BML adalah Baku Mutu Lingkungan sesuai regulasi yang berlaku.', 0, 'J');
+
+        $pdf->Ln(6);
+
+        $pdf->SetFont('DejaVu', 'B', 7);
+        $pdf->Cell(0, 4,
+            'Hasil hanya berhubungan dengan contoh yang diuji dan laporan ini tidak boleh digandakan kecuali seluruhnya.',
+            0, 1, 'C');
+
+        $pdf->SetFont('DejaVu', 'BI', 7);
+        $pdf->Cell(0, 4,
+            'The result relate only to the samples tested and this report shall not be reproduced except in full.',
+            0, 1, 'C');
     }
 
     public function testLhp($pdf, $lhp)
@@ -895,7 +1071,7 @@ class LhpFinalPdfController extends Controller
                 return $detail->lhpDocumentParameters;
             });
 
-            $this->processParameters($allParametersRaw);
+            $cleanParameters = $this->processParameters($allParametersRaw);
 
             // Masukkan ke array output
             $finalOutput[] = [
@@ -904,14 +1080,81 @@ class LhpFinalPdfController extends Controller
 
                 // INI DATA YANG MAU ANDA LIHAT
                 // Kita convert ke array biar mudah dibaca saat dd()
-                'debug_parameters' => $allParametersRaw->toArray(),
+                'parameters' => $cleanParameters,
             ];
         }
 
         return $finalOutput;
     }
 
-    public function processParameters($parameters)
+    public function processParameters($allParametersRaw)
     {
+        // 1️⃣ Flatten data
+        $cleanParameters = $allParametersRaw->map(function ($param) {
+            $testParameter = $param->offerSampleParameter->testParameter ?? null;
+            $testMethod = $testParameter?->testMethod;
+
+            return [
+                'parameter_name' => $testParameter->name ?? '-',
+                'result' => ($param->description_results ?? '').($param->result ?? ''),
+                'standard_note' => $testParameter->standard_note ?? '-',
+                'unit' => $testParameter->unit ?? '-',
+                'method_name' => $testMethod->name ?? '-',
+            ];
+        });
+
+        // 2️⃣ Group by kombinasi unik (lebih aman daripada hanya nama)
+        $grouped = $cleanParameters->groupBy(function ($item) {
+            return $item['parameter_name']
+                .'|'.$item['unit']
+                .'|'.$item['method_name']
+                .'|'.$item['standard_note'];
+        });
+
+        // 3️⃣ Cari jumlah result maksimum (untuk stabilitas kolom)
+        $maxResultCount = $grouped->map->count()->max();
+
+        // 4️⃣ Bentuk ulang ke format tabel final
+        $final = $grouped->values()->map(function ($items, $index) use ($maxResultCount) {
+            $first = $items->first();
+
+            $results = $items->pluck('result')->values();
+
+            // Samakan jumlah kolom result
+            while ($results->count() < $maxResultCount) {
+                $results->push('');
+            }
+
+            return array_merge(
+                [
+                    $index + 1,                      // Nomor
+                    $first['parameter_name'],        // Nama parameter
+                ],
+                $results->toArray(),                // Result dinamis
+                [
+                    $first['standard_note'],         // Standard
+                    $first['unit'],                  // Unit
+                    $first['method_name'],           // Method
+                ]
+            );
+        })->values();
+
+        return $final;
+    }
+
+    public function getRevision($offerID)
+    {
+        $revision = DB::table('offer_reviews')
+            ->where('offer_id', $offerID)
+            ->where('decision', 'rejected')
+            ->count();
+
+        if ($revision <= 10) {
+            $terbit = 1;
+        } else {
+            $terbit = floor(($revision - 1) / 5);
+        }
+
+        return 'No.Revisi/Terbit: '.$revision.':'.$terbit;
     }
 }
