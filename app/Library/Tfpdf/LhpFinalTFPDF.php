@@ -137,9 +137,22 @@ class LhpFinalTFPDF extends \tFPDF
         if ($this->lhpFinalParameterFooter) {
             $this->SetY(-15);
             $this->SetFont('PlusJakartaSans', '', 8);
-            $this->Cell(100, 5, 'No. Dok.: FSOP.JLI-11.1', 0, 0, 'L');
-            $this->Cell(0, 5, $this->setRevision, 0, 1, 'C');
-            $this->Cell(0, 5, 'Halaman '.$this->PageNo().' dari {nb}', 0, 1, 'R');
+
+            $pageWidth = $this->GetPageWidth();
+            $margin = $this->lMargin;
+            $usableWidth = $pageWidth - ($margin * 2);
+
+            $colWidth = $usableWidth / 3;
+
+            // Kiri
+            $this->SetX($margin);
+            $this->Cell($colWidth, 5, 'No. Dok.: FSOP.JLI-11.1', 0, 0, 'L');
+
+            // Tengah
+            $this->Cell($colWidth, 5, $this->setRevision, 0, 0, 'C');
+
+            // Kanan
+            $this->Cell($colWidth, 5, 'Halaman '.$this->PageNo().' dari {nb}', 0, 0, 'R');
         }
     }
 }
