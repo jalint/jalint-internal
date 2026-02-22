@@ -27,6 +27,11 @@ class JalintTFPDF extends \tFPDF
         $this->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.ttf', true);
         $this->AddFont('DejaVu', 'I', 'DejaVuSerif-Italic.ttf', true);
         $this->AddFont('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf', true);
+
+        $this->AddFont('PlusJakartaSans', '', 'PlusJakartaSans-Regular.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'I', 'PlusJakartaSans-Italic.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'B', 'PlusJakartaSans-Bold.ttf', true);
+        $this->AddFont('PlusJakartaSans', 'BI', 'PlusJakartaSans-BoldItalic.ttf', true);
     }
 
     public function Header()

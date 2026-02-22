@@ -372,9 +372,9 @@ class JalintPdfController extends Controller
         $pdf = new JalintTFPDF();
 
         // Setup Font
-        $pdf->AddFont('DejaVu', '', 'DejaVuSans.ttf', true);
-        $pdf->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.ttf', true);
-        $pdf->AddFont('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf', true);
+        // $pdf->AddFont('DejaVu', '', 'DejaVuSans.ttf', true);
+        // $pdf->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.ttf', true);
+        // $pdf->AddFont('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf', true);
 
         $customerAccount = auth('customer')->user();
 
