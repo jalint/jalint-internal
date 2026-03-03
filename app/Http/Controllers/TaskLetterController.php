@@ -208,7 +208,7 @@ class TaskLetterController extends Controller
             'officers.*.id' => ['required', 'exists:employees,id'],
             'officers.*.position' => ['nullable', 'string'],
             'officers.*.description' => ['nullable', 'string'],
-            'surat_rencana_contoh_uji' => ['nullable', 'file', 'mimes:pdf,jpg,png,jpeg', 'max:5120'],
+            'surat_rencana_contoh_uji' => ['nullable', 'file', 'mimes:pdf,jpg,png,jpeg,docx,xlsx', 'max:5120'],
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -367,6 +367,8 @@ class TaskLetterController extends Controller
 
             $task->update([
                 'status' => 'confirmed',
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
             ]);
 
             return response()->json([

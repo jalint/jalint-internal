@@ -300,169 +300,131 @@ class LhpFinalPdfController extends Controller
             $currX += $rightW[$i];
         }
 
-        // --- 4. DATA TABEL BAWAH ---
-        $dataRows = [];
-        // Row 1
-        $row1 = ['1', 'Suhu (Temperature)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row1[] = '26.5';
-        }
-        array_push($row1, '-', '°C', 'SNI 06-6989.23-2005');
-        $dataRows[] = $row1;
-
-        // Row 2
-        $row2 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row2[] = '2.31';
-        }
-        array_push($row2, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row2;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
-        $row3 = ['2', 'Kebutuhan Oksigen Biokimiawi (Biochemical Oxygen Demand, BOD5)'];
-        for ($k = 0; $k < $countResults; ++$k) {
-            $row3[] = '2.31';
-        }
-        array_push($row3, '20', 'mg/L', 'SNI 6989.72:2009');
-        $dataRows[] = $row3;
-
         // --- 5. RENDER ISI TABEL BAWAH ---
         $pdf->SetFont('DejaVu', '', 7);
         $yCurrent = $currY + $h_total;
 
-        foreach ($headers['parameters'] as $row) {
-            $xCurrent = $startX;
+        // foreach ($headers['parameters'] as $row) {
+        //     $xCurrent = $startX;
 
-            // Hitung Tinggi Baris
+        //     // Hitung Tinggi Baris
+        //     $maxH = 5;
+        //     for ($i = 0; $i < count($w2); ++$i) {
+        //         $pdf->SetXY(300, 0);
+        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Font size 7 line height 3
+        //         if ($pdf->GetY() > $maxH) {
+        //             $maxH = $pdf->GetY();
+        //         }
+        //     }
+        //     if ($maxH > 5) {
+        //         $maxH += 2;
+        //     }
+
+        //     // Cek Page Break (Penting: Jangan ganti Landscape, tetap Portrait)
+        //     if ($yCurrent + $maxH > $pdf->GetPageHeight() - 20) {
+        //         $pdf->AddPage(); // Default Portrait
+        //         $yCurrent = 10;
+        //         // Opsional: Gambar Header lagi
+        //     }
+
+        //     // Gambar Kotak & Data
+        //     // B. GAMBAR KOTAK & TEKS
+        //     for ($i = 0; $i < count($w2); ++$i) {
+        //         // 1. Gambar Kotak (Border) Full Height
+        //         // Kotak tetap digambar dari Y paling atas agar rapi
+        //         $pdf->SetXY($xCurrent, $yCurrent);
+        //         $pdf->Rect($xCurrent, $yCurrent, $w2[$i], $maxH, 'D');
+
+        //         // 2. HITUNG TINGGI TEKS CUMA UNTUK KOLOM INI
+        //         // Kita perlu tahu teks ini tingginya berapa baris untuk ngitung center
+        //         $pdf->SetXY(300, 0); // Pindah ke luar layar sebentar
+        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Simulasi tulis
+        //         $currentTextH = $pdf->GetY(); // Dapatkan tinggi teks aktual
+
+        //         // 3. HITUNG POSISI Y AGAR CENTER
+        //         // Rumus: Y_Awal + ((Tinggi_Kotak - Tinggi_Teks) / 2)
+        //         $yCenter = $yCurrent + (($maxH - $currentTextH) / 2);
+
+        //         // 4. ATUR POSISI X & Y BARU
+        //         $pdf->SetXY($xCurrent, $yCenter);
+
+        //         // 5. TENTUKAN ALIGNMENT HORIZONTAL (Left/Center)
+        //         $align = 'C';
+        //         // Param (Index 1) & Metode (Index Terakhir) rata Kiri
+        //         if ($i == 1 || $i == count($w2) - 1) {
+        //             $align = 'L';
+        //         }
+
+        //         // 6. TULIS TEKS SEBENARNYA
+        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, $align);
+
+        //         // Geser X ke kolom berikutnya
+        //         $xCurrent += $w2[$i];
+        //     }
+        //     $yCurrent += $maxH;
+        // }
+
+        foreach ($headers['parameters'] as $row) {
+            $no = $row[0];
+            $param = $row[1];
+
+            $totalCol = count($row);
+
+            $method = $row[$totalCol - 1];
+            $unit = $row[$totalCol - 2];
+            $bml = $row[$totalCol - 3];
+
+            $results = array_slice($row, 2, $totalCol - 5);
+
+            while (count($results) < $countResults) {
+                $results[] = '';
+            }
+
+            $finalRow = array_merge(
+                [$no, $param],
+                $results,
+                [$bml, $unit, $method]
+            );
+
+            $xCurrent = $startX;
             $maxH = 5;
+
+            // HITUNG TINGGI BARIS
             for ($i = 0; $i < count($w2); ++$i) {
                 $pdf->SetXY(300, 0);
-                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Font size 7 line height 3
-                if ($pdf->GetY() > $maxH) {
-                    $maxH = $pdf->GetY();
+                $yBefore = $pdf->GetY();
+                $pdf->MultiCell($w2[$i], 3, $finalRow[$i], 0, 'L');
+                $textHeight = $pdf->GetY() - $yBefore;
+
+                if ($textHeight > $maxH) {
+                    $maxH = $textHeight;
                 }
             }
-            if ($maxH > 5) {
-                $maxH += 2;
-            }
 
-            // Cek Page Break (Penting: Jangan ganti Landscape, tetap Portrait)
+            $maxH += 2;
+
+            // PAGE BREAK
             if ($yCurrent + $maxH > $pdf->GetPageHeight() - 20) {
-                $pdf->AddPage(); // Default Portrait
+                $pdf->AddPage();
                 $yCurrent = 10;
-                // Opsional: Gambar Header lagi
             }
 
-            // Gambar Kotak & Data
-            // B. GAMBAR KOTAK & TEKS
+            // RENDER CELL
             for ($i = 0; $i < count($w2); ++$i) {
-                // 1. Gambar Kotak (Border) Full Height
-                // Kotak tetap digambar dari Y paling atas agar rapi
-                $pdf->SetXY($xCurrent, $yCurrent);
-                $pdf->Rect($xCurrent, $yCurrent, $w2[$i], $maxH, 'D');
+                $pdf->Rect($xCurrent, $yCurrent, $w2[$i], $maxH);
 
-                // 2. HITUNG TINGGI TEKS CUMA UNTUK KOLOM INI
-                // Kita perlu tahu teks ini tingginya berapa baris untuk ngitung center
-                $pdf->SetXY(300, 0); // Pindah ke luar layar sebentar
-                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Simulasi tulis
-                $currentTextH = $pdf->GetY(); // Dapatkan tinggi teks aktual
+                $pdf->SetXY($xCurrent, $yCurrent + 1);
 
-                // 3. HITUNG POSISI Y AGAR CENTER
-                // Rumus: Y_Awal + ((Tinggi_Kotak - Tinggi_Teks) / 2)
-                $yCenter = $yCurrent + (($maxH - $currentTextH) / 2);
-
-                // 4. ATUR POSISI X & Y BARU
-                $pdf->SetXY($xCurrent, $yCenter);
-
-                // 5. TENTUKAN ALIGNMENT HORIZONTAL (Left/Center)
                 $align = 'C';
-                // Param (Index 1) & Metode (Index Terakhir) rata Kiri
                 if ($i == 1 || $i == count($w2) - 1) {
                     $align = 'L';
                 }
 
-                // 6. TULIS TEKS SEBENARNYA
-                $pdf->MultiCell($w2[$i], 3, $row[$i], 0, $align);
+                $pdf->MultiCell($w2[$i], 3, $finalRow[$i], 0, $align);
 
-                // Geser X ke kolom berikutnya
                 $xCurrent += $w2[$i];
             }
+
             $yCurrent += $maxH;
         }
 
@@ -978,54 +940,6 @@ class LhpFinalPdfController extends Controller
         $pdf->SetY(max($endYLabel, $endYValue) + 2);
     }
 
-    private function getDataHeaderLHPDebug($lhp)
-    {
-        $allDetails = $lhp->details->sortBy('id')->values();
-        $totalGlobal = $allDetails->count();
-        $jobNumber = $lhp->job_number;
-
-        // 2. Mapping Nomor Global (1/10, 2/10, dst)
-        $mappedDetails = $allDetails->map(function ($detail, $index) use ($totalGlobal, $jobNumber) {
-            $nomorUrut = $index + 1;
-            $detail->nomor_lengkap = "{$jobNumber}-{$nomorUrut}/{$totalGlobal}";
-
-            $detail->tgl_sampling = $detail->tanggal_pengambilan
-                ? Carbon::parse($detail->tanggal_pengambilan)->format('d/m/Y')
-                : '-';
-
-            return $detail;
-        });
-
-        // 3. Grouping berdasarkan Matrix ID
-        $groupedDetails = $mappedDetails->groupBy('sample_matrix_id');
-
-        $finalOutput = [];
-
-        foreach ($groupedDetails as $matrixId => $items) {
-            // --- INI YANG ANDA MINTA ---
-            // Mengambil semua 'identifikasi_contoh_uji' dalam grup ini menjadi array simple
-            $dynamicSubHeaders = $items->pluck('identifikasi_contoh_uji')->toArray();
-
-            // Susun data baris (Rows) untuk tabel
-            $rows = $items->map(function ($item) {
-                return [
-                    $item->nomor_lengkap,
-                    $item->identifikasi_contoh_uji,
-                    $item->sampleMatrix->name ?? '-',
-                    $item->tgl_sampling,
-                ];
-            })->values()->toArray(); // values() untuk reset key array, toArray() ubah collection jadi array
-
-            // Masukkan ke array utama per Halaman/Kelompok
-            $finalOutput[] = [
-                'headers' => $dynamicSubHeaders, // Array ['ATsp-1', 'ATsp-2', ...]
-                'data' => $rows,               // Array data tabel
-            ];
-        }
-
-        return $finalOutput;
-    }
-
     private function getDataHeaderLHP($lhp)
     {
         $allDetails = $lhp->details->sortBy('id')->values();
@@ -1097,7 +1011,7 @@ class LhpFinalPdfController extends Controller
             return [
                 'parameter_name' => $testParameter->name ?? '-',
                 'result' => ($param->description_results ?? '').($param->result ?? ''),
-                'standard_note' => $testParameter->standard_note ?? '-',
+                'standard_note' => $testParameter->standard_max_value ?? '-',
                 'unit' => $testParameter->unit ?? '-',
                 'method_name' => $testMethod->name ?? '-',
             ];

@@ -427,7 +427,7 @@ class OfferController extends Controller
                     : 'in_review';
 
                 $offer = Offer::create([
-                    'offer_number' => $this->generateOfferNumber(),
+                    'offer_number' => $status == 'draft' ? null : $this->generateOfferNumber(),
                     'title' => $request->title,
                     'customer_id' => $request->customer_id,
                     'offer_date' => $request->offer_date,
@@ -437,6 +437,7 @@ class OfferController extends Controller
                     'additional_description' => $request->additional_description,
                     'location' => $request->location,
                     'testing_activities' => $request->testing_activities,
+                    'type_of_implementation' => $request->type_of_implementation,
                     'is_dp' => $request->boolean('is_dp'),
                     'dp_amount' => $request->dp_amount ?? 0,
                     'discount_amount' => $request->discount_amount ?? 0,
@@ -646,6 +647,7 @@ class OfferController extends Controller
                 'additional_description' => $request->additional_description,
                 'location' => $request->location,
                 'testing_activities' => $request->testing_activities,
+                'type_of_implementation' => $request->type_of_implementation,
                 'discount_amount' => $request->discount_amount ?? $offer->discount_amount,
                 'subtotal_amount' => $request->subtotal_amount ?? $offer->subtotal_amount,
                 'total_amount' => $request->total_amount ?? $offer->total_amount,
@@ -766,6 +768,7 @@ class OfferController extends Controller
         if ($user->hasRole('admin_kuptdk') && $request->decision != 'rejected') {
             $rules = array_merge($rules, [
                 'testing_activities' => 'required|string',
+                'type_of_implementation' => 'required|string',
                 'details' => 'required|array|min:1',
                 'details.*.id' => 'required|exists:offer_sample_parameters,id',
                 'details.*.test_parameter_id' => 'required|exists:test_parameters,id',
@@ -891,6 +894,7 @@ class OfferController extends Controller
 
                 $offer->update([
                     'testing_activities' => $validated['testing_activities'],
+                    'type_of_implementation' => $validated['type_of_implementation'],
                 ]);
             }
 

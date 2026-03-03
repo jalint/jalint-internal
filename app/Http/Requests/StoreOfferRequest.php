@@ -33,6 +33,7 @@ class StoreOfferRequest extends FormRequest
             'additional_description' => ['nullable', 'string'],
             'location' => ['nullable', 'string'],
             'testing_activities' => ['nullable', 'string'],
+            'type_of_implementation' => ['nullable', 'string'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'subtotal_amount' => ['nullable', 'numeric', 'min:0'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],

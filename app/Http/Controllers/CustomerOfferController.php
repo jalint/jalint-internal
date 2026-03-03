@@ -20,12 +20,16 @@ class CustomerOfferController extends Controller
         $base = Offer::query()
             ->where('customer_id', $customerId);
 
-        // if (!$request->filled('start_date') && !$request->filled('end_date')) {
-        //     $base->whereBetween('offer_date', [
-        //         now()->startOfMonth(),
-        //         now()->endOfMonth(),
-        //     ]);
-        // }
+        if (!$request->filled('start_date') && !$request->filled('end_date')) {
+            // $base->whereBetween('offer_date', [
+            //     now()->startOfMonth(),
+            //     now()->endOfMonth(),
+            // ]);
+            $base->whereBetween('offer_date', [
+                now()->subMonths(3)->startOfMonth(),
+                now()->subMonth()->endOfMonth(),
+            ]);
+        }
 
         // =========================
         // FILTER TANGGAL MANUAL
@@ -322,7 +326,7 @@ class CustomerOfferController extends Controller
             $isDraft = $request->boolean('is_draft') ? 'draft' : 'in_review';
 
             $offer = Offer::create([
-                'offer_number' => $this->generateOfferNumber(),
+                'offer_number' => $isDraft == 'draft' ? null : $this->generateOfferNumber(),
                 'title' => $request->title,
                 'customer_id' => $customerId,
                 'offer_date' => $request->offer_date,

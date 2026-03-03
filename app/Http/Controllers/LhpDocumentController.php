@@ -435,7 +435,7 @@ class LhpDocumentController extends Controller
             $rules = array_merge($rules, [
                 'lhp_document_parameters' => 'required|array|min:1',
                 'lhp_document_parameters.*.id' => 'required|exists:lhp_document_parameters,id',
-                'lhp_document_parameters.*.description_results' => 'required',
+                'lhp_document_parameters.*.description_results' => 'nullable',
             ]);
         }
 
