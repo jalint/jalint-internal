@@ -193,15 +193,6 @@ class LhpFinalPdfController extends Controller
 
         $pdf->SetXY($pdf->GetX() - array_sum($w), $yStart + 13);
 
-        // --- DATA TABEL ATAS ---
-        // $headers = [
-        //     ['LAB-JLI-2503309A -1/9', 'ATsp-2 (Sumur Pantau Blok B) Maju Terus', 'Air Sumur Pantau Indonesia', '04/03/2025'],
-        //     ['LAB-JLI-2503309A -2/9', 'ATsp-2 (Sumur Pantau Blok B)', 'Air Sumur Pantau', '04/03/2025'],
-        //     ['LAB-JLI-2503309A -3/9', 'ATsp-3 (Sumur Pantau Blok C)', 'Air Sumur Pantau', '04/03/2025'],
-        //     ['LAB-JLI-2503309A -4/9', 'ATsp-4 (Sumur Pantau Blok E)', 'Air Sumur Pantau', '04/03/2025'],
-        //     ['LAB-JLI-2503309A -5/9', 'ATsp-5 (Sumur Pantau Blok G)', 'Air Sumur Pantau', '04/03/2025'],
-        // ];
-
         $pdf->SetFont('DejaVu', '', 8);
         foreach ($headers['data'] as $row) {
             $pdf->Cell($w[0], 6, $row[0], 0, 0, 'C');
@@ -303,66 +294,6 @@ class LhpFinalPdfController extends Controller
         // --- 5. RENDER ISI TABEL BAWAH ---
         $pdf->SetFont('DejaVu', '', 7);
         $yCurrent = $currY + $h_total;
-
-        // foreach ($headers['parameters'] as $row) {
-        //     $xCurrent = $startX;
-
-        //     // Hitung Tinggi Baris
-        //     $maxH = 5;
-        //     for ($i = 0; $i < count($w2); ++$i) {
-        //         $pdf->SetXY(300, 0);
-        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Font size 7 line height 3
-        //         if ($pdf->GetY() > $maxH) {
-        //             $maxH = $pdf->GetY();
-        //         }
-        //     }
-        //     if ($maxH > 5) {
-        //         $maxH += 2;
-        //     }
-
-        //     // Cek Page Break (Penting: Jangan ganti Landscape, tetap Portrait)
-        //     if ($yCurrent + $maxH > $pdf->GetPageHeight() - 20) {
-        //         $pdf->AddPage(); // Default Portrait
-        //         $yCurrent = 10;
-        //         // Opsional: Gambar Header lagi
-        //     }
-
-        //     // Gambar Kotak & Data
-        //     // B. GAMBAR KOTAK & TEKS
-        //     for ($i = 0; $i < count($w2); ++$i) {
-        //         // 1. Gambar Kotak (Border) Full Height
-        //         // Kotak tetap digambar dari Y paling atas agar rapi
-        //         $pdf->SetXY($xCurrent, $yCurrent);
-        //         $pdf->Rect($xCurrent, $yCurrent, $w2[$i], $maxH, 'D');
-
-        //         // 2. HITUNG TINGGI TEKS CUMA UNTUK KOLOM INI
-        //         // Kita perlu tahu teks ini tingginya berapa baris untuk ngitung center
-        //         $pdf->SetXY(300, 0); // Pindah ke luar layar sebentar
-        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, 'L'); // Simulasi tulis
-        //         $currentTextH = $pdf->GetY(); // Dapatkan tinggi teks aktual
-
-        //         // 3. HITUNG POSISI Y AGAR CENTER
-        //         // Rumus: Y_Awal + ((Tinggi_Kotak - Tinggi_Teks) / 2)
-        //         $yCenter = $yCurrent + (($maxH - $currentTextH) / 2);
-
-        //         // 4. ATUR POSISI X & Y BARU
-        //         $pdf->SetXY($xCurrent, $yCenter);
-
-        //         // 5. TENTUKAN ALIGNMENT HORIZONTAL (Left/Center)
-        //         $align = 'C';
-        //         // Param (Index 1) & Metode (Index Terakhir) rata Kiri
-        //         if ($i == 1 || $i == count($w2) - 1) {
-        //             $align = 'L';
-        //         }
-
-        //         // 6. TULIS TEKS SEBENARNYA
-        //         $pdf->MultiCell($w2[$i], 3, $row[$i], 0, $align);
-
-        //         // Geser X ke kolom berikutnya
-        //         $xCurrent += $w2[$i];
-        //     }
-        //     $yCurrent += $maxH;
-        // }
 
         foreach ($headers['parameters'] as $row) {
             $no = $row[0];
@@ -751,7 +682,7 @@ class LhpFinalPdfController extends Controller
 
         // --- 2. HEADER TABEL ---
         $pdf->SetFont('DejaVu', '', 5.5);
-        $h_header = 18;
+        $h_header = 18; // Tinggi total kotak header
         $yHeader = $pdf->GetY();
         $currentX = $startX;
 
@@ -767,15 +698,29 @@ class LhpFinalPdfController extends Controller
         ];
 
         // A. Header Biasa (Kolom 0-7)
+        // --- A. Header Biasa (Kolom 0-7) ---
         for ($i = 0; $i < 8; ++$i) {
-            $pdf->SetXY($currentX, $yHeader);
-            $pdf->Rect($currentX, $yHeader, $w[$i], $h_header); // Kotak Header
+            // 1. Gambar kotak header
+            $pdf->Rect($currentX, $yHeader, $w[$i], $h_header);
 
-            // Logika Align Header: Kolom 0 (Left), Sisa (Center)
-            $alignHeader = ($i == 0) ? 'L' : 'C';
+            // 2. Hitung jumlah baris dari teks
+            $text = $headers[$i];
+            $lines = substr_count($text, "\n") + 1;
 
-            $pdf->SetXY($currentX, $yHeader + 2);
-            $pdf->MultiCell($w[$i], 2.5, $headers[$i], 0, $alignHeader);
+            // 3. Tentukan tinggi tiap baris (leading)
+            $lineHeight = 3; // bisa 2.8 - 3.2 tergantung selera
+            $textHeight = $lines * $lineHeight;
+
+            // 4. Hitung posisi Y agar center vertical
+            $yText = $yHeader + (($h_header - $textHeight) / 2);
+
+            // 5. Set posisi tepat di tengah kotak
+            $pdf->SetXY($currentX, $yText);
+
+            // 6. Tulis teks rata tengah horizontal
+            $pdf->MultiCell($w[$i], $lineHeight, $text, 0, 'C');
+
+            // 7. Kembalikan X ke kolom berikutnya
             $currentX += $w[$i];
         }
 
@@ -849,46 +794,131 @@ class LhpFinalPdfController extends Controller
                 'BT: '.$detail->koordinat_bujur,
             ];
         }
+
+        // foreach ($data as $row) {
+        //     $yStartRow = $pdf->GetY();
+        //     $xStartRow = $startX;
+
+        //     // A. UKUR TINGGI BARIS (Invisible Measure)
+        //     $maxH = 5; // Minimal tinggi 5mm
+        //     for ($i = 0; $i < count($w); ++$i) {
+        //         $pdf->SetXY(300, 0); // Pindah keluar layar
+        //         $pdf->MultiCell($w[$i], 3, $row[$i], 0, 'L');
+        //         if ($pdf->GetY() > $maxH) {
+        //             $maxH = $pdf->GetY();
+        //         }
+        //     }
+
+        //     // Cek Page Break
+        //     if ($yStartRow + $maxH > $pdf->GetPageHeight() - 30) {
+        //         $pdf->AddPage();
+        //         $yStartRow = $pdf->GetY(); // Reset Y di halaman baru
+        //         // (Idealnya gambar header ulang disini, tapi kita skip biar simple)
+        //     }
+
+        //     // B. GAMBAR DATA & GARIS VERTIKAL (TANPA GARIS HORIZONTAL)
+        //     $currentX = $xStartRow;
+        //     for ($i = 0; $i < count($w); ++$i) {
+        //         // 1. Gambar Garis Vertikal Kiri & Kanan SAJA (Bukan Rect penuh)
+        //         // Ini membuat efek "Polos" (tanpa garis horizontal antar baris)
+        //         $pdf->Line($currentX, $yStartRow, $currentX, $yStartRow + $maxH); // Kiri
+        //         $pdf->Line($currentX + $w[$i], $yStartRow, $currentX + $w[$i], $yStartRow + $maxH); // Kanan
+
+        //         // 2. Tentukan Alignment Data
+        //         // Kolom 0 & 1 = Left, Sisanya = Center
+        //         $alignData = ($i == 0 || $i == 1) ? 'L' : 'C';
+
+        //         // 3. Tulis Teks
+        //         $pdf->SetXY($currentX, $yStartRow);
+        //         $pdf->MultiCell($w[$i], 3, $row[$i], 0, $alignData);
+
+        //         $currentX += $w[$i];
+        //     }
+        //     // Pindah ke baris berikutnya
+        //     $pdf->SetY($yStartRow + $maxH);
+        // }
         foreach ($data as $row) {
             $yStartRow = $pdf->GetY();
             $xStartRow = $startX;
 
-            // A. UKUR TINGGI BARIS (Invisible Measure)
-            $maxH = 5; // Minimal tinggi 5mm
+            $lineHeight = 3;
+            $paddingX = 1;   // jarak kiri/kanan
+            $paddingY = 1;   // jarak atas/bawah
+
+            // =========================
+            // A. UKUR TINGGI BARIS
+            // =========================
+            $maxH = 5;
+
             for ($i = 0; $i < count($w); ++$i) {
-                $pdf->SetXY(300, 0); // Pindah keluar layar
-                $pdf->MultiCell($w[$i], 3, $row[$i], 0, 'L');
-                if ($pdf->GetY() > $maxH) {
-                    $maxH = $pdf->GetY();
+                $pdf->SetXY(300, 0); // keluar layar
+
+                $pdf->MultiCell(
+                    $w[$i] - ($paddingX * 2),
+                    $lineHeight,
+                    $row[$i],
+                    0,
+                    'L'
+                );
+
+                $textHeight = $pdf->GetY();
+
+                if ($textHeight > $maxH) {
+                    $maxH = $textHeight;
                 }
             }
 
-            // Cek Page Break
+            // Tambahkan padding vertical
+            $maxH += ($paddingY * 2);
+
+            // =========================
+            // PAGE BREAK CHECK
+            // =========================
             if ($yStartRow + $maxH > $pdf->GetPageHeight() - 30) {
                 $pdf->AddPage();
-                $yStartRow = $pdf->GetY(); // Reset Y di halaman baru
-                // (Idealnya gambar header ulang disini, tapi kita skip biar simple)
+                $yStartRow = $pdf->GetY();
             }
 
-            // B. GAMBAR DATA & GARIS VERTIKAL (TANPA GARIS HORIZONTAL)
+            // =========================
+            // B. RENDER DATA
+            // =========================
             $currentX = $xStartRow;
-            for ($i = 0; $i < count($w); ++$i) {
-                // 1. Gambar Garis Vertikal Kiri & Kanan SAJA (Bukan Rect penuh)
-                // Ini membuat efek "Polos" (tanpa garis horizontal antar baris)
-                $pdf->Line($currentX, $yStartRow, $currentX, $yStartRow + $maxH); // Kiri
-                $pdf->Line($currentX + $w[$i], $yStartRow, $currentX + $w[$i], $yStartRow + $maxH); // Kanan
 
-                // 2. Tentukan Alignment Data
-                // Kolom 0 & 1 = Left, Sisanya = Center
+            for ($i = 0; $i < count($w); ++$i) {
+                // Garis kiri dan kanan
+                $pdf->Line($currentX, $yStartRow, $currentX, $yStartRow + $maxH);
+                $pdf->Line($currentX + $w[$i], $yStartRow, $currentX + $w[$i], $yStartRow + $maxH);
+
+                // Alignment
                 $alignData = ($i == 0 || $i == 1) ? 'L' : 'C';
 
-                // 3. Tulis Teks
-                $pdf->SetXY($currentX, $yStartRow);
-                $pdf->MultiCell($w[$i], 3, $row[$i], 0, $alignData);
+                // Hitung tinggi teks lagi untuk center vertical
+                $pdf->SetXY(300, 0);
+                $pdf->MultiCell(
+                    $w[$i] - ($paddingX * 2),
+                    $lineHeight,
+                    $row[$i],
+                    0,
+                    $alignData
+                );
+                $textHeight = $pdf->GetY();
+
+                // Hitung posisi Y agar center vertical
+                $yText = $yStartRow + (($maxH - $textHeight) / 2);
+
+                // Render teks dengan padding
+                $pdf->SetXY($currentX + $paddingX, $yText);
+                $pdf->MultiCell(
+                    $w[$i] - ($paddingX * 2),
+                    $lineHeight,
+                    $row[$i],
+                    0,
+                    $alignData
+                );
 
                 $currentX += $w[$i];
             }
-            // Pindah ke baris berikutnya
+
             $pdf->SetY($yStartRow + $maxH);
         }
 

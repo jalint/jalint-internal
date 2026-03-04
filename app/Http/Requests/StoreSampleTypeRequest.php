@@ -24,6 +24,8 @@ class StoreSampleTypeRequest extends FormRequest
         return [
             'name' => ['required'],
             'regulation' => ['required'],
+            'titik_1' => ['nullable'],
+            'titik_2' => ['nullable'],
         ];
     }
 }
