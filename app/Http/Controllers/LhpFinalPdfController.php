@@ -437,14 +437,44 @@ class LhpFinalPdfController extends Controller
         $pdf->MultiCell($wText, $hLine, 'Metode pengambilan contoh uji : SNI 8995:2021 / Sampling Method : SNI 8995:2021', 0, 'L');
 
         // --- 7. DISCLAIMER (PALING BAWAH, BUKAN FOOTER) ---
-        $pdf->Ln(6); // Beri jarak agak jauh dari notes di atas
+        // --- 7. DISCLAIMER (SELALU DI ATAS FOOTER) ---
 
-        $pdf->SetFont('DejaVu', 'B', 7); // Bold
-        // Gunakan Cell(0) agar otomatis Center di tengah halaman
-        $pdf->Cell(0, 4, 'Hasil hanya berhubungan dengan contoh yang diuji dan laporan ini tidak boleh digandakan kecuali seluruhnya.', 0, 1, 'C');
+        $disclaimerHeight = 10; // total tinggi 2 baris
+        $footerMargin = 20;     // jarak dari bawah (sesuaikan dengan footer kamu)
 
-        $pdf->SetFont('DejaVu', 'BI', 7); // Bold Italic
-        $pdf->Cell(0, 4, 'The result relate only to the samples tested and this report shall not be reproduced except in full.', 0, 1, 'C');
+        // Hitung posisi Y absolut
+        $yDisclaimer = $pdf->GetPageHeight() - $footerMargin - $disclaimerHeight;
+
+        // Jika posisi sekarang sudah melewati titik disclaimer,
+        // paksa halaman baru
+        if ($pdf->GetY() > $yDisclaimer) {
+            $pdf->AddPage();
+            $yDisclaimer = $pdf->GetPageHeight() - $footerMargin - $disclaimerHeight;
+        }
+
+        // Set posisi tepat sebelum footer
+        $pdf->SetY($yDisclaimer);
+
+        // Render disclaimer
+        $pdf->SetFont('DejaVu', 'B', 7);
+        $pdf->Cell(
+            0,
+            4,
+            'Hasil hanya berhubungan dengan contoh yang diuji dan laporan ini tidak boleh digandakan kecuali seluruhnya.',
+            0,
+            1,
+            'C'
+        );
+
+        $pdf->SetFont('DejaVu', 'BI', 7);
+        $pdf->Cell(
+            0,
+            4,
+            'The result relate only to the samples tested and this report shall not be reproduced except in full.',
+            0,
+            1,
+            'C'
+        );
     }
 
     public function generateCertificateDebug($pdf, $lhp, $headers)
